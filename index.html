@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="A pocket notepad, checklists, shopping lists and reminders that nudge you at the right time." />
+  <title>Nest</title>
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nest" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="topbar-row">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name" id="viewTitle">Today</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="notifBtn" aria-label="Reminders permission" title="Turn on notifications">
+            <span id="notifIcon">🔔</span>
+          </button>
+          <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings">⚙️</button>
+        </div>
+      </div>
+      <p class="topbar-sub" id="viewSub"></p>
+    </header>
+
+    <!-- Views -->
+    <main class="content" id="content">
+      <section class="view" id="view-today"></section>
+      <section class="view" id="view-reminders" hidden></section>
+      <section class="view" id="view-shopping" hidden></section>
+      <section class="view" id="view-checklists" hidden></section>
+      <section class="view" id="view-notes" hidden></section>
+    </main>
+
+    <!-- Bottom navigation -->
+    <nav class="tabbar" id="tabbar">
+      <button class="tab is-active" data-view="today">
+        <span class="tab-ic">📌</span><span class="tab-lbl">Today</span>
+      </button>
+      <button class="tab" data-view="reminders">
+        <span class="tab-ic">⏰</span><span class="tab-lbl">Reminders</span>
+      </button>
+      <button class="tab" data-view="shopping">
+        <span class="tab-ic">🛒</span><span class="tab-lbl">Shopping</span>
+      </button>
+      <button class="tab" data-view="checklists">
+        <span class="tab-ic">✅</span><span class="tab-lbl">Checklists</span>
+      </button>
+      <button class="tab" data-view="notes">
+        <span class="tab-ic">📝</span><span class="tab-lbl">Notes</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Modal host -->
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h2 id="modalTitle">Title</h2>
+        <button class="icon-btn" id="modalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
