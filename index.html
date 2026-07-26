@@ -27,10 +27,8 @@
           <span class="brand-name" id="viewTitle">Today</span>
         </div>
         <div class="topbar-actions">
-          <button class="icon-btn" id="notifBtn" aria-label="Reminders permission" title="Turn on notifications">
-            <span id="notifIcon">🔔</span>
-          </button>
-          <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings">⚙️</button>
+          <button class="icon-btn" id="notifBtn" aria-label="Reminders permission" title="Turn on notifications"></button>
+          <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings"></button>
         </div>
       </div>
       <p class="topbar-sub" id="viewSub"></p>
@@ -48,23 +46,23 @@
 
     <!-- Bottom navigation -->
     <nav class="tabbar" id="tabbar">
-      <button class="tab is-active" data-view="today">
-        <span class="tab-ic">📌</span><span class="tab-lbl">Today</span>
+      <button class="tab is-active" data-view="today" data-icon="sun">
+        <span class="tab-ic"></span><span class="tab-lbl">Today</span>
       </button>
-      <button class="tab" data-view="habits">
-        <span class="tab-ic">🔥</span><span class="tab-lbl">Habits</span>
+      <button class="tab" data-view="habits" data-icon="flame">
+        <span class="tab-ic"></span><span class="tab-lbl">Habits</span>
       </button>
-      <button class="tab" data-view="reminders">
-        <span class="tab-ic">⏰</span><span class="tab-lbl">Remind</span>
+      <button class="tab" data-view="reminders" data-icon="bell">
+        <span class="tab-ic"></span><span class="tab-lbl">Remind</span>
       </button>
-      <button class="tab" data-view="shopping">
-        <span class="tab-ic">🛒</span><span class="tab-lbl">Shopping</span>
+      <button class="tab" data-view="shopping" data-icon="bag">
+        <span class="tab-ic"></span><span class="tab-lbl">Shopping</span>
       </button>
-      <button class="tab" data-view="checklists">
-        <span class="tab-ic">✅</span><span class="tab-lbl">Checklists</span>
+      <button class="tab" data-view="checklists" data-icon="check-square">
+        <span class="tab-ic"></span><span class="tab-lbl">Checklists</span>
       </button>
-      <button class="tab" data-view="notes">
-        <span class="tab-ic">📝</span><span class="tab-lbl">Notes</span>
+      <button class="tab" data-view="notes" data-icon="file-text">
+        <span class="tab-ic"></span><span class="tab-lbl">Notes</span>
       </button>
     </nav>
   </div>
@@ -74,7 +72,7 @@
     <div class="modal" id="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
         <h2 id="modalTitle">Title</h2>
-        <button class="icon-btn" id="modalClose" aria-label="Close">✕</button>
+        <button class="icon-btn" id="modalClose" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-foot" id="modalFoot"></div>

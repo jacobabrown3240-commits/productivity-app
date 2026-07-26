@@ -2,7 +2,7 @@
    Network-first for app files so new deploys show up without a hard refresh,
    with a cache fallback so the app still opens offline.
    Also handles clicks on reminder notifications by focusing the app. */
-var CACHE = "nest-v2";
+var CACHE = "nest-v3";
 var ASSETS = [
   ".",
   "index.html",

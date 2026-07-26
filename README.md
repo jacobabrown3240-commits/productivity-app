@@ -1,4 +1,4 @@
-# 🪺 Nest — Notes, Lists & Reminders
+# Nest — Notes, Lists & Reminders
 
 A pocket productivity app: a notepad, weekly checklists, shopping lists, and
 reminders that nudge you at the right time. It's a companion to
@@ -11,27 +11,27 @@ sending reminder notifications.
 
 ## What's inside
 
-- **📌 Today** — a home dashboard: a quick box to capture "remember tonight /
+- **Today** — a home dashboard: a quick box to capture "remember tonight /
   today" with an optional time (anything with a time notifies you), your
   agenda **sorted by what's due** (overdue first), a **Coming up** peek at the
   next few days, quick habit check-offs, checklist progress, and a link to your
   weekly review.
-- **🔥 Habits** — track daily habits and build a **streak**. Tick today or any
+- **Habits** — track daily habits and build a **streak**. Tick today or any
   of the last 7 days, see your current and best streak, and pick an icon for
-  each habit. Reorder them by dragging.
-- **⏰ Reminders** — one-off reminders for a specific day *and* **weekly**
+  each habit with a colour. Reorder them by dragging.
+- **Reminders** — one-off reminders for a specific day *and* **weekly**
   recurring reminders (bin night, gym, call home). Pause, edit or delete any of
   them.
-- **🛒 Shopping** — a shopping list you tick off as you go, with optional
-  **quantities** and **categories/aisles** (Produce, Dairy, Frozen…). Items
+- **Shopping** — a shopping list you tick off as you go, with optional
+  **quantities** and **categories/aisles** (Produce, Dairy, Frozen and so on). Items
   group by aisle automatically once you categorise them, or drag to reorder a
   flat list. Make as many named lists as you like and clear checked items in one
   tap.
-- **✅ Checklists** — little routines that **auto-reset every week** so you start
+- **Checklists** — little routines that **auto-reset every week** so you start
   each week fresh. Add, rename, edit, delete and **drag to reorder** items. Two
   starters are included ("Weekly reset" and "Every morning").
-- **📝 Notes** — a simple notepad for anything else.
-- **📅 Weekly review** — a summary of your week (habit check-ins, reminders
+- **Notes** — a simple notepad for anything else.
+- **Weekly review** — a summary of your week (habit check-ins, reminders
   done, checklist completion, best streak) with a saved reflection for each
   week.
 
@@ -47,7 +47,7 @@ Nest has **no server**, so reminders are checked by the app itself:
 - If a reminder's time passed while the app was closed, you'll get it the next
   time you open Nest.
 - For the most reliable nudges, **install it to your home screen** and allow
-  notifications when asked (tap the 🔔 in the top bar).
+  notifications when asked (tap the bell in the top bar).
 
 > On iPhone, web-app notifications require iOS 16.4+ and the app must be added
 > to the Home Screen first.

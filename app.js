@@ -14,24 +14,60 @@
   var WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   // Shopping categories, in the order they should appear when grouped.
   var CATEGORIES = [
-    { id: "produce",   name: "Produce",   emoji: "🥦" },
-    { id: "dairy",     name: "Dairy & eggs", emoji: "🥛" },
-    { id: "meat",      name: "Meat & fish", emoji: "🍗" },
-    { id: "bakery",    name: "Bakery",    emoji: "🍞" },
-    { id: "frozen",    name: "Frozen",    emoji: "🧊" },
-    { id: "pantry",    name: "Pantry",    emoji: "🥫" },
-    { id: "drinks",    name: "Drinks",    emoji: "🧃" },
-    { id: "household", name: "Household", emoji: "🧻" },
-    { id: "other",     name: "Other",     emoji: "🛍️" }
+    { id: "produce",   name: "Produce" },
+    { id: "dairy",     name: "Dairy & eggs" },
+    { id: "meat",      name: "Meat & fish" },
+    { id: "bakery",    name: "Bakery" },
+    { id: "frozen",    name: "Frozen" },
+    { id: "pantry",    name: "Pantry" },
+    { id: "drinks",    name: "Drinks" },
+    { id: "household", name: "Household" },
+    { id: "other",     name: "Other" }
   ];
   function catById(id) { for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i].id === id) return CATEGORIES[i]; return null; }
-  // A palette of emoji offered when creating a habit.
-  var HABIT_EMOJI = ["🔥", "💧", "🏃", "📖", "🧘", "💪", "🥗", "😴", "💊", "🦷", "🧹", "✍️", "🎸", "🌱", "☀️", "🚭", "💰", "📵"];
-
-  var state = load();
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  // -----------------------------------------------------------
+  // Inline SVG icons (monochrome, inherit currentColor)
+  // -----------------------------------------------------------
+  var ICONS = {
+    sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/>',
+    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    "bell-off": '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.9 17.9 0 0 1 18 8"/><path d="M6.26 6.26A5.9 5.9 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/>',
+    bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+    "check-square": '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+    "file-text": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>',
+    settings: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/>',
+    repeat: '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+    pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+    grip: '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>'
+  };
+  var ICONS_FILLED = { grip: 1, pause: 1, flame: 1 };
+  function ic(name, cls) {
+    var filled = ICONS_FILLED[name];
+    return '<svg class="ic' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" ' +
+      (filled ? 'fill="currentColor" stroke="none"'
+              : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"') +
+      ' aria-hidden="true">' + (ICONS[name] || "") + "</svg>";
+  }
+
+  // Colour palette for habit tiles (replaces emoji icons).
+  var HABIT_COLORS = ["#10b981", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"];
+  function monogram(name) {
+    var s = (name || "").trim();
+    return s ? s.charAt(0).toUpperCase() : "?";
   }
 
   function defaultState() {
@@ -77,16 +113,16 @@
         }
       ],
       habits: [
-        { id: uid(), name: "Drink water", emoji: "💧", history: {}, created: Date.now() },
-        { id: uid(), name: "Move / exercise", emoji: "🏃", history: {}, created: Date.now() },
-        { id: uid(), name: "Read", emoji: "📖", history: {}, created: Date.now() }
+        { id: uid(), name: "Drink water", color: HABIT_COLORS[1], history: {}, created: Date.now() },
+        { id: uid(), name: "Move / exercise", color: HABIT_COLORS[0], history: {}, created: Date.now() },
+        { id: uid(), name: "Read", color: HABIT_COLORS[2], history: {}, created: Date.now() }
       ],
       reviews: {},
       notes: [
         {
           id: uid(),
-          title: "Welcome to Nest 🪺",
-          body: "This is your pocket notepad.\n\n• Jot anything here\n• Tap Today to capture stuff to remember\n• Track daily habits and build a streak 🔥\n• Turn on the 🔔 up top so reminders can notify you\n\nTap a note to edit it.",
+          title: "Welcome to Nest",
+          body: "This is your pocket notepad.\n\n• Jot anything here\n• Tap Today to capture stuff to remember\n• Track daily habits and build a streak\n• Turn on notifications up top so reminders can nudge you\n\nTap a note to edit it.",
           updated: Date.now()
         }
       ],
@@ -114,7 +150,10 @@
           if (it.qty === undefined) it.qty = "";
         });
       });
-      s.habits.forEach(function (h) { if (!h.history) h.history = {}; });
+      s.habits.forEach(function (h, i) {
+        if (!h.history) h.history = {};
+        if (!h.color) h.color = HABIT_COLORS[i % HABIT_COLORS.length];
+      });
       return s;
     } catch (e) {
       return defaultState();
@@ -124,6 +163,9 @@
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
   }
+
+  // Initialised after all constants above are defined (defaultState reads them).
+  var state = load();
 
   // -----------------------------------------------------------
   // Date helpers
@@ -443,7 +485,7 @@
     html += '<button class="btn btn-primary btn-block" data-act="add-habit" style="margin-bottom:14px">+ New habit</button>';
 
     if (state.habits.length === 0) {
-      html += emptyBox("🔥", "No habits yet", "Add one and check it off each day to build a streak.");
+      html += emptyBox("flame", "No habits yet", "Add one and check it off each day to build a streak.");
       el.innerHTML = html; return;
     }
 
@@ -456,12 +498,12 @@
       var doneToday = habitDoneOn(h, tk);
       html += '<div class="habit-card row-wrap" data-id="' + h.id + '">';
       html += '<div class="habit-top">' +
-        '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' +
-        '<div class="habit-emoji">' + esc(h.emoji || "🔥") + "</div>" +
+        '<span class="drag-handle" data-drag aria-label="Reorder">' + ic("grip") + "</span>" +
+        '<div class="habit-icon" style="background:' + esc(h.color || HABIT_COLORS[0]) + '">' + esc(monogram(h.name)) + "</div>" +
         '<div class="habit-info">' +
           '<div class="habit-name">' + esc(h.name) + "</div>" +
           '<div class="habit-streak">' +
-            '<span class="flame">🔥 ' + streak + " day" + (streak === 1 ? "" : "s") + "</span>" +
+            '<span class="flame">' + ic("flame", "ic-sm") + " " + streak + " day" + (streak === 1 ? "" : "s") + "</span>" +
             '<span>Best: ' + best + "</span>" +
           "</div>" +
         "</div>" +
@@ -481,8 +523,8 @@
       });
       html += "</div>";
       html += '<div class="habit-actions" style="justify-content:flex-end;margin-top:8px">' +
-        '<button class="mini-btn" data-act="edit-habit" data-id="' + h.id + '" aria-label="Edit">✏️</button>' +
-        '<button class="mini-btn" data-act="del-habit" data-id="' + h.id + '" aria-label="Delete">🗑️</button>' +
+        '<button class="mini-btn" data-act="edit-habit" data-id="' + h.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
+        '<button class="mini-btn" data-act="del-habit" data-id="' + h.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
         "</div>";
       html += "</div>";
     });
@@ -494,15 +536,15 @@
   function findHabit(id) { return state.habits.filter(function (h) { return h.id === id; })[0]; }
 
   function habitModal(existing) {
-    var h = existing || { name: "", emoji: "🔥" };
-    var chosen = h.emoji || "🔥";
+    var h = existing || { name: "", color: HABIT_COLORS[0] };
+    var chosen = h.color || HABIT_COLORS[0];
     var body =
       '<label class="field"><span>Habit name</span>' +
       '<input type="text" id="hbName" placeholder="e.g. Meditate" value="' + esc(h.name) + '"></label>' +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Icon</span>' +
-      '<div class="cat-picker" id="hbEmoji">' +
-        HABIT_EMOJI.map(function (e) {
-          return '<button type="button" class="cat-opt ' + (e === chosen ? "is-active" : "") + '" data-e="' + e + '" style="font-size:1.2rem">' + e + "</button>";
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:8px;font-weight:600">Colour</span>' +
+      '<div class="swatches" id="hbColor">' +
+        HABIT_COLORS.map(function (c) {
+          return '<button type="button" class="swatch ' + (c === chosen ? "is-active" : "") + '" data-c="' + c + '" style="background:' + c + '" aria-label="Colour"></button>';
         }).join("") +
       "</div></div>";
     var foot = (existing ? '<button class="btn btn-danger" data-x="del">Delete</button>' : "") +
@@ -513,10 +555,10 @@
       body: body, foot: foot,
       onMount: function (b, f) {
         b.querySelector("#hbName").focus();
-        b.querySelector("#hbEmoji").addEventListener("click", function (e) {
-          var btn = e.target.closest("button[data-e]"); if (!btn) return;
-          chosen = btn.getAttribute("data-e");
-          b.querySelectorAll("#hbEmoji button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
+        b.querySelector("#hbColor").addEventListener("click", function (e) {
+          var btn = e.target.closest("button[data-c]"); if (!btn) return;
+          chosen = btn.getAttribute("data-c");
+          b.querySelectorAll("#hbColor button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
         });
         f.querySelector('[data-x="cancel"]').onclick = closeModal;
         if (existing) f.querySelector('[data-x="del"]').onclick = function () {
@@ -526,8 +568,8 @@
         f.querySelector('[data-x="save"]').onclick = function () {
           var name = b.querySelector("#hbName").value.trim();
           if (!name) { b.querySelector("#hbName").focus(); return; }
-          if (existing) { existing.name = name; existing.emoji = chosen; }
-          else state.habits.push({ id: uid(), name: name, emoji: chosen, history: {}, created: Date.now() });
+          if (existing) { existing.name = name; existing.color = chosen; }
+          else state.habits.push({ id: uid(), name: name, color: chosen, history: {}, created: Date.now() });
           save(); closeModal(); render();
           toast(existing ? "Habit updated" : "Habit added");
         };
@@ -599,7 +641,7 @@
     // Permission banner
     if (supportsNotify() && Notification.permission === "default") {
       html += '<div class="banner" id="notifBanner">' +
-        '<span style="font-size:1.4rem">🔔</span>' +
+        '<span class="banner-ic">' + ic("bell") + "</span>" +
         '<div class="banner-text"><b>Turn on reminders</b><small>Let Nest notify you when something is due.</small></div>' +
         '<button class="btn btn-primary btn-sm" data-act="ask-notify">Enable</button></div>';
     }
@@ -623,7 +665,7 @@
     // Today's reminders
     html += '<div class="section-label">On the agenda' + (overdue.length ? ' · <span style="color:var(--danger)">' + overdue.length + " overdue</span>" : "") + "</div>";
     if (items.length === 0) {
-      html += emptyBox("🗒️", "Nothing scheduled for today", "Add something above, or set a reminder.");
+      html += emptyBox("clock", "Nothing scheduled for today", "Add something above, or set a reminder.");
     } else {
       html += '<div class="card"><div class="rows">';
       items.forEach(function (r) { html += reminderRow(r, true); });
@@ -653,8 +695,9 @@
         var streak = currentStreak(h);
         html += '<div class="row">' +
           '<button class="check round ' + (on ? "done" : "") + '" data-act="toggle-habit-today" data-id="' + h.id + '"></button>' +
-          '<div class="row-body"><div class="row-text">' + esc(h.emoji || "🔥") + " " + esc(h.name) + "</div>" +
-          (streak > 0 ? '<div class="row-meta"><span class="pill warn">🔥 ' + streak + " day" + (streak === 1 ? "" : "s") + "</span></div>" : "") +
+          '<span class="habit-dot" style="background:' + esc(h.color || HABIT_COLORS[0]) + '"></span>' +
+          '<div class="row-body"><div class="row-text">' + esc(h.name) + "</div>" +
+          (streak > 0 ? '<div class="row-meta"><span class="pill warn">' + ic("flame", "ic-sm") + " " + streak + " day" + (streak === 1 ? "" : "s") + "</span></div>" : "") +
           "</div></div>";
       });
       html += "</div></div>";
@@ -680,7 +723,7 @@
     // Weekly review entry
     html += '<div class="section-label">This week</div>';
     html += '<div class="review-card" data-act="open-review">' +
-      '<div class="rc-head"><span class="em">📅</span><div>' +
+      '<div class="rc-head"><span class="em">' + ic("calendar") + "</span><div>" +
       '<div class="rc-title">Weekly review</div>' +
       '<div class="rc-sub">See how your week went &amp; jot a reflection</div>' +
       "</div></div></div>";
@@ -708,14 +751,14 @@
     return '<div class="row ' + (r.done ? "done" : "") + '" data-rid="' + r.id + '">' +
       (checkable
         ? '<button class="check ' + (r.done ? "done" : "") + '" data-act="toggle-reminder" data-rid="' + r.id + '" aria-label="Done"></button>'
-        : '<span style="width:24px;flex:0 0 auto;text-align:center">' + (r.enabled === false ? "⏸️" : "⏰") + "</span>") +
+        : '<span class="row-lead">' + ic(r.enabled === false ? "pause" : "clock") + "</span>") +
       '<div class="row-body">' +
         '<div class="row-text">' + esc(r.text) + "</div>" +
         '<div class="row-meta">' + meta.join("") + "</div>" +
       "</div>" +
       '<div class="row-actions">' +
-        '<button class="mini-btn" data-act="edit-reminder" data-rid="' + r.id + '" aria-label="Edit">✏️</button>' +
-        '<button class="mini-btn" data-act="del-reminder" data-rid="' + r.id + '" aria-label="Delete">🗑️</button>' +
+        '<button class="mini-btn" data-act="edit-reminder" data-rid="' + r.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
+        '<button class="mini-btn" data-act="del-reminder" data-rid="' + r.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
       "</div></div>";
   }
 
@@ -735,11 +778,11 @@
       .sort(function (a, b) { return (a.weekday - b.weekday) || reminderDueSort(a, b); });
 
     html += '<div class="section-label">Weekly</div>';
-    if (weekly.length === 0) html += emptyBox("🔁", "No weekly reminders yet", "Great for bin night, gym, calls home…");
+    if (weekly.length === 0) html += emptyBox("repeat", "No weekly reminders yet", "Great for bin night, gym, calls home…");
     else { html += '<div class="card"><div class="rows">'; weekly.forEach(function (r) { html += reminderRow(r); }); html += "</div></div>"; }
 
     html += '<div class="section-label">One-off</div>';
-    if (once.length === 0) html += emptyBox("📅", "No one-off reminders", "Add appointments or things for a specific day.");
+    if (once.length === 0) html += emptyBox("calendar", "No one-off reminders", "Add appointments or things for a specific day.");
     else { html += '<div class="card"><div class="rows">'; once.forEach(function (r) { html += reminderRow(r); }); html += "</div></div>"; }
 
     html += '<p class="hint">Nest checks for due reminders while it’s open and when you reopen it. Keep it installed on your home screen and notifications on for the best nudges.</p>';
@@ -825,7 +868,7 @@
     html += '<button class="chip add" data-act="add-list">+ List</button>';
     html += "</div>";
 
-    if (!list) { el.innerHTML = html + emptyBox("🛒", "No lists yet", "Create one to get started."); return; }
+    if (!list) { el.innerHTML = html + emptyBox("bag", "No lists yet", "Create one to get started."); return; }
 
     var pending = list.items.filter(function (i) { return !i.done; });
     var done = list.items.filter(function (i) { return i.done; });
@@ -838,12 +881,12 @@
     html += '<div class="card-head" style="padding:0 2px 4px">' +
       '<div class="card-title" style="font-size:0.95rem">' + esc(list.name) + '</div>' +
       '<div class="row-actions">' +
-        '<button class="mini-btn" data-act="rename-list" aria-label="Rename list">✏️</button>' +
-        (state.lists.length > 1 ? '<button class="mini-btn" data-act="del-list" aria-label="Delete list">🗑️</button>' : "") +
+        '<button class="mini-btn" data-act="rename-list" aria-label="Rename list">' + ic("edit") + "</button>" +
+        (state.lists.length > 1 ? '<button class="mini-btn" data-act="del-list" aria-label="Delete list">' + ic("trash") + "</button>" : "") +
       '</div></div>';
 
     if (list.items.length === 0) {
-      html += emptyBox("✨", "This list is empty", "Add your first item above.");
+      html += emptyBox("bag", "This list is empty", "Add your first item above.");
       el.innerHTML = html; return;
     }
 
@@ -858,14 +901,14 @@
       CATEGORIES.forEach(function (cat) {
         var inCat = pending.filter(function (i) { return i.cat === cat.id; });
         if (!inCat.length) return;
-        html += '<div class="cat-head"><span class="cat-emoji">' + cat.emoji + "</span>" + esc(cat.name) + "</div>";
+        html += '<div class="cat-head">' + esc(cat.name) + "</div>";
         html += '<div class="card"><div class="rows">';
         inCat.forEach(function (it) { html += shopRow(it, false); });
         html += "</div></div>";
       });
       var uncat = pending.filter(function (i) { return !i.cat; });
       if (uncat.length) {
-        html += '<div class="cat-head"><span class="cat-emoji">•</span>Uncategorized</div>';
+        html += '<div class="cat-head">Uncategorized</div>';
         html += '<div class="card"><div class="rows">';
         uncat.forEach(function (it) { html += shopRow(it, false); });
         html += "</div></div>";
@@ -885,13 +928,13 @@
 
   function shopRow(it, draggable) {
     return '<div class="row ' + (it.done ? "done" : "") + '" data-id="' + it.id + '">' +
-      (draggable && !it.done ? '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' : "") +
+      (draggable && !it.done ? '<span class="drag-handle" data-drag aria-label="Reorder">' + ic("grip") + "</span>" : "") +
       '<button class="check round ' + (it.done ? "done" : "") + '" data-act="toggle-shop" data-iid="' + it.id + '" aria-label="Got it"></button>' +
       '<div class="row-body"><div class="row-text">' + esc(it.text) +
         (it.qty ? ' <span class="pill qty-badge">×' + esc(it.qty) + "</span>" : "") + "</div></div>" +
       '<div class="row-actions">' +
-        '<button class="mini-btn" data-act="edit-shop" data-iid="' + it.id + '" aria-label="Edit">✏️</button>' +
-        '<button class="mini-btn" data-act="del-shop" data-iid="' + it.id + '" aria-label="Remove">✕</button>' +
+        '<button class="mini-btn" data-act="edit-shop" data-iid="' + it.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
+        '<button class="mini-btn" data-act="del-shop" data-iid="' + it.id + '" aria-label="Remove">' + ic("x") + "</button>" +
       "</div></div>";
   }
 
@@ -906,7 +949,7 @@
       '<div class="cat-picker" id="siCat">' +
         '<button type="button" class="cat-opt ' + (chosenCat === "" ? "is-active" : "") + '" data-c="">None</button>' +
         CATEGORIES.map(function (c) {
-          return '<button type="button" class="cat-opt ' + (c.id === chosenCat ? "is-active" : "") + '" data-c="' + c.id + '">' + c.emoji + " " + esc(c.name) + "</button>";
+          return '<button type="button" class="cat-opt ' + (c.id === chosenCat ? "is-active" : "") + '" data-c="' + c.id + '">' + esc(c.name) + "</button>";
         }).join("") +
       "</div></div>";
     openModal({
@@ -936,7 +979,7 @@
     html += '<button class="btn btn-primary btn-block" data-act="add-checklist" style="margin-bottom:14px">+ New checklist</button>';
 
     if (state.checklists.length === 0) {
-      html += emptyBox("✅", "No checklists yet", "Build a weekly routine you can tick off.");
+      html += emptyBox("check-square", "No checklists yet", "Build a weekly routine you can tick off.");
       el.innerHTML = html; return;
     }
 
@@ -948,25 +991,25 @@
       html += '<div class="card-head"><div class="card-title">' + esc(c.title) +
         (c.recurring === "weekly" ? ' <span class="pill accent">Weekly</span>' : "") + "</div>" +
         '<div class="row-actions">' +
-          '<button class="mini-btn" data-act="rename-checklist" data-cid="' + c.id + '" aria-label="Rename">✏️</button>' +
-          '<button class="mini-btn" data-act="del-checklist" data-cid="' + c.id + '" aria-label="Delete">🗑️</button>' +
+          '<button class="mini-btn" data-act="rename-checklist" data-cid="' + c.id + '" aria-label="Rename">' + ic("edit") + "</button>" +
+          '<button class="mini-btn" data-act="del-checklist" data-cid="' + c.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
         '</div></div>';
       html += '<div class="progress" style="margin-bottom:10px"><span style="width:' + pct + '%"></span></div>';
       html += '<div class="rows sortable" data-clsort="' + c.id + '">';
       c.items.forEach(function (it) {
         html += '<div class="row ' + (it.done ? "done" : "") + '" data-id="' + it.id + '">' +
-          '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' +
+          '<span class="drag-handle" data-drag aria-label="Reorder">' + ic("grip") + "</span>" +
           '<button class="check ' + (it.done ? "done" : "") + '" data-act="toggle-cl" data-cid="' + c.id + '" data-iid="' + it.id + '"></button>' +
           '<div class="row-body"><div class="row-text">' + esc(it.text) + "</div></div>" +
           '<div class="row-actions">' +
-            '<button class="mini-btn" data-act="edit-cl-item" data-cid="' + c.id + '" data-iid="' + it.id + '" aria-label="Edit">✏️</button>' +
-            '<button class="mini-btn" data-act="del-cl-item" data-cid="' + c.id + '" data-iid="' + it.id + '" aria-label="Remove">✕</button>' +
+            '<button class="mini-btn" data-act="edit-cl-item" data-cid="' + c.id + '" data-iid="' + it.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
+            '<button class="mini-btn" data-act="del-cl-item" data-cid="' + c.id + '" data-iid="' + it.id + '" aria-label="Remove">' + ic("x") + "</button>" +
           "</div></div>";
       });
       html += "</div>";
       html += '<button class="btn-add-full" data-act="add-cl-item" data-cid="' + c.id + '" style="margin-top:10px">+ Add item</button>';
       if (c.recurring === "weekly" && done === total && total > 0) {
-        html += '<p class="hint">🎉 All done — resets ' + fmtDate(nextWeekResetKey()) + ".</p>";
+        html += '<p class="hint">All done — resets ' + fmtDate(nextWeekResetKey()) + ".</p>";
       }
       html += "</div>";
     });
@@ -1023,7 +1066,7 @@
     var html = "";
     html += '<button class="btn btn-primary btn-block" data-act="add-note" style="margin-bottom:14px">+ New note</button>';
     if (state.notes.length === 0) {
-      html += emptyBox("📝", "No notes yet", "Tap above to jot something down.");
+      html += emptyBox("file-text", "No notes yet", "Tap above to jot something down.");
       el.innerHTML = html; return;
     }
     var notes = state.notes.slice().sort(function (a, b) { return b.updated - a.updated; });
@@ -1069,8 +1112,8 @@
     });
   }
 
-  function emptyBox(icon, title, sub) {
-    return '<div class="empty"><span class="big">' + icon + "</span><p><b>" + esc(title) + "</b></p><p>" + esc(sub) + "</p></div>";
+  function emptyBox(iconName, title, sub) {
+    return '<div class="empty"><span class="empty-ic">' + ic(iconName) + "</span><p><b>" + esc(title) + "</b></p><p>" + esc(sub) + "</p></div>";
   }
 
   // ---------- WEEKLY REVIEW ----------
@@ -1105,7 +1148,7 @@
         '<div class="review-stat"><div class="n accent">' + habitChecks + '</div><div class="l">habit check-ins</div></div>' +
         '<div class="review-stat"><div class="n">' + remDone + '</div><div class="l">reminders done</div></div>' +
         '<div class="review-stat"><div class="n">' + clDone + "/" + clTotal + '</div><div class="l">checklist items (' + clPct + '%)</div></div>' +
-        '<div class="review-stat"><div class="n">🔥 ' + topStreak + '</div><div class="l">' + (topName ? "best streak · " + esc(topName) : "best streak") + '</div></div>' +
+        '<div class="review-stat"><div class="n" style="display:flex;align-items:center;gap:6px">' + ic("flame", "ic-lg flame-warn") + topStreak + '</div><div class="l">' + (topName ? "best streak · " + esc(topName) : "best streak") + '</div></div>' +
       "</div>" +
       '<label class="field"><span>Reflection — how did the week go?</span>' +
       '<textarea id="rvText" placeholder="Wins, what to improve, plans for next week…" style="min-height:120px">' + esc(review.reflection || "") + "</textarea></label>";
@@ -1133,7 +1176,7 @@
     if (!supportsNotify()) { btn.style.display = "none"; return; }
     var granted = Notification.permission === "granted";
     btn.classList.toggle("on", granted);
-    $("#notifIcon").textContent = granted ? "🔔" : "🔕";
+    btn.innerHTML = ic(granted ? "bell" : "bell-off");
     btn.title = granted ? "Reminders are on" : "Turn on notifications";
   }
 
@@ -1147,7 +1190,7 @@
     if (Notification.permission === "denied") { toast("Enable notifications in your browser settings"); return; }
     Notification.requestPermission().then(function (p) {
       updateNotifButton();
-      if (p === "granted") { toast("Reminders on 🔔"); checkDue(); }
+      if (p === "granted") { toast("Reminders on"); checkDue(); }
       else toast("No worries — you can turn these on later");
       render();
     });
@@ -1197,7 +1240,7 @@
       if (supportsNotify() && Notification.permission === "granted") {
         fireNotification(r.text, "Reminder · " + (r.kind === "weekly" ? "Weekly" : fmtDate(r.date)));
       } else {
-        toast("⏰ " + r.text);
+        toast("Reminder: " + r.text);
       }
     });
     if (fired) { save(); if (currentView === "today" || currentView === "reminders") render(); }
@@ -1423,8 +1466,8 @@
         '<button class="btn btn-sm btn-primary" data-x="notif">' + (notif === "On" ? "Test" : "Enable") + "</button></div></div>" +
       '<hr class="divider">' +
       '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:5px;font-weight:600">Your data</span>' +
-        '<div class="field-row"><button class="btn btn-sm" data-x="export">⬇ Export</button>' +
-        '<button class="btn btn-sm" data-x="import">⬆ Import</button></div>' +
+        '<div class="field-row"><button class="btn btn-sm" data-x="export">' + ic("download", "ic-sm") + ' Export</button>' +
+        '<button class="btn btn-sm" data-x="import">' + ic("upload", "ic-sm") + ' Import</button></div>' +
         '<p class="hint">Everything is stored on this device only. Export a backup before switching phones.</p></div>' +
       '<button class="btn btn-danger btn-block btn-sm" data-x="reset" style="margin-top:6px">Reset all data</button>';
     openModal({
@@ -1438,7 +1481,7 @@
         });
         var notifBtn = b.querySelector('[data-x="notif"]');
         if (notifBtn) notifBtn.onclick = function () {
-          if (Notification.permission === "granted") { fireNotification("Nest test 🔔", "Notifications are working!"); }
+          if (Notification.permission === "granted") { fireNotification("Nest test", "Notifications are working!"); }
           else askNotify();
         };
         b.querySelector('[data-x="export"]').onclick = exportData;
@@ -1503,6 +1546,15 @@
   // -----------------------------------------------------------
   // Boot
   // -----------------------------------------------------------
+  // Inject static SVG icons (header, tab bar, modal close).
+  $("#settingsBtn").innerHTML = ic("settings");
+  $("#modalClose").innerHTML = ic("x");
+  document.querySelectorAll(".tab").forEach(function (t) {
+    var name = t.getAttribute("data-icon");
+    var slot = t.querySelector(".tab-ic");
+    if (name && slot) slot.innerHTML = ic(name);
+  });
+
   $("#settingsBtn").addEventListener("click", settingsModal);
   $("#notifBtn").addEventListener("click", askNotify);
   $("#modalClose").addEventListener("click", closeModal);
