@@ -1547,6 +1547,8 @@
   // Boot
   // -----------------------------------------------------------
   // Inject static SVG icons (header, tab bar, modal close).
+  var brandMark = document.querySelector(".brand-mark");
+  if (brandMark) brandMark.innerHTML = ic("check-square");
   $("#settingsBtn").innerHTML = ic("settings");
   $("#modalClose").innerHTML = ic("x");
   document.querySelectorAll(".tab").forEach(function (t) {
