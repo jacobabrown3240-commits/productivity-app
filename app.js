@@ -12,6 +12,21 @@
   var KEY = "nest.state.v1";
   var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   var WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Shopping categories, in the order they should appear when grouped.
+  var CATEGORIES = [
+    { id: "produce",   name: "Produce",   emoji: "🥦" },
+    { id: "dairy",     name: "Dairy & eggs", emoji: "🥛" },
+    { id: "meat",      name: "Meat & fish", emoji: "🍗" },
+    { id: "bakery",    name: "Bakery",    emoji: "🍞" },
+    { id: "frozen",    name: "Frozen",    emoji: "🧊" },
+    { id: "pantry",    name: "Pantry",    emoji: "🥫" },
+    { id: "drinks",    name: "Drinks",    emoji: "🧃" },
+    { id: "household", name: "Household", emoji: "🧻" },
+    { id: "other",     name: "Other",     emoji: "🛍️" }
+  ];
+  function catById(id) { for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i].id === id) return CATEGORIES[i]; return null; }
+  // A palette of emoji offered when creating a habit.
+  var HABIT_EMOJI = ["🔥", "💧", "🏃", "📖", "🧘", "💪", "🥗", "😴", "💊", "🦷", "🧹", "✍️", "🎸", "🌱", "☀️", "🚭", "💰", "📵"];
 
   var state = load();
 
@@ -28,9 +43,9 @@
           id: uid(),
           name: "Shopping",
           items: [
-            { id: uid(), text: "Milk", qty: "", done: false },
-            { id: uid(), text: "Eggs", qty: "", done: false },
-            { id: uid(), text: "Bread", qty: "", done: false }
+            { id: uid(), text: "Milk", qty: "", cat: "dairy", done: false },
+            { id: uid(), text: "Eggs", qty: "", cat: "dairy", done: false },
+            { id: uid(), text: "Bread", qty: "", cat: "bakery", done: false }
           ]
         }
       ],
@@ -61,11 +76,17 @@
           ]
         }
       ],
+      habits: [
+        { id: uid(), name: "Drink water", emoji: "💧", history: {}, created: Date.now() },
+        { id: uid(), name: "Move / exercise", emoji: "🏃", history: {}, created: Date.now() },
+        { id: uid(), name: "Read", emoji: "📖", history: {}, created: Date.now() }
+      ],
+      reviews: {},
       notes: [
         {
           id: uid(),
           title: "Welcome to Nest 🪺",
-          body: "This is your pocket notepad.\n\n• Jot anything here\n• Tap Today to capture stuff to remember\n• Turn on the 🔔 up top so reminders can notify you\n\nTap a note to edit it.",
+          body: "This is your pocket notepad.\n\n• Jot anything here\n• Tap Today to capture stuff to remember\n• Track daily habits and build a streak 🔥\n• Turn on the 🔔 up top so reminders can notify you\n\nTap a note to edit it.",
           updated: Date.now()
         }
       ],
@@ -83,7 +104,17 @@
       if (!s.lists) s.lists = [];
       if (!s.checklists) s.checklists = [];
       if (!s.notes) s.notes = [];
+      if (!s.habits) s.habits = [];
+      if (!s.reviews) s.reviews = {};
       if (!s.settings) s.settings = { theme: "dark" };
+      // backfill new per-item fields
+      s.lists.forEach(function (l) {
+        (l.items || []).forEach(function (it) {
+          if (it.cat === undefined) it.cat = "";
+          if (it.qty === undefined) it.qty = "";
+        });
+      });
+      s.habits.forEach(function (h) { if (!h.history) h.history = {}; });
       return s;
     } catch (e) {
       return defaultState();
@@ -160,6 +191,70 @@
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
+  // -----------------------------------------------------------
+  // Drag-to-reorder (pointer based — works with touch & mouse)
+  // -----------------------------------------------------------
+  function getDragAfter(container, y, dragging) {
+    var els = Array.prototype.slice.call(container.children).filter(function (c) {
+      return c !== dragging && c.hasAttribute("data-id");
+    });
+    var closest = { offset: -Infinity, el: null };
+    els.forEach(function (child) {
+      var box = child.getBoundingClientRect();
+      var offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) closest = { offset: offset, el: child };
+    });
+    return closest.el;
+  }
+
+  function reorderArrayByIds(arr, ids) {
+    var map = {};
+    arr.forEach(function (o) { map[o.id] = o; });
+    var res = [];
+    ids.forEach(function (id) { if (map[id]) { res.push(map[id]); delete map[id]; } });
+    arr.forEach(function (o) { if (map[o.id]) res.push(o); });   // keep any leftovers
+    arr.length = 0;
+    Array.prototype.push.apply(arr, res);
+  }
+
+  // container: element whose direct [data-id] children are reorderable.
+  // arr: the backing model array (objects with matching .id).
+  function makeSortable(container, arr) {
+    if (!container) return;
+    container.querySelectorAll("[data-drag]").forEach(function (handle) {
+      handle.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        var dragging = handle.closest("[data-id]");
+        if (!dragging) return;
+        dragging.classList.add("dragging");
+        container.classList.add("is-dragging");
+
+        function onMove(ev) {
+          if (ev.cancelable) ev.preventDefault();
+          var after = getDragAfter(container, ev.clientY, dragging);
+          if (after == null) container.appendChild(dragging);
+          else container.insertBefore(dragging, after);
+        }
+        function onUp() {
+          document.removeEventListener("pointermove", onMove);
+          document.removeEventListener("pointerup", onUp);
+          document.removeEventListener("pointercancel", onUp);
+          dragging.classList.remove("dragging");
+          container.classList.remove("is-dragging");
+          var ids = Array.prototype.slice.call(container.children)
+            .filter(function (c) { return c.hasAttribute("data-id"); })
+            .map(function (c) { return c.getAttribute("data-id"); });
+          reorderArrayByIds(arr, ids);
+          save();
+          render();
+        }
+        document.addEventListener("pointermove", onMove, { passive: false });
+        document.addEventListener("pointerup", onUp);
+        document.addEventListener("pointercancel", onUp);
+      });
+    });
+  }
+
   var toastTimer;
   function toast(msg) {
     var t = $("#toast");
@@ -230,6 +325,7 @@
   var currentView = "today";
   var VIEW_META = {
     today:      { title: "Today",      sub: function () { return new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); } },
+    habits:     { title: "Habits",     sub: function () { return "Build streaks, one day at a time"; } },
     reminders:  { title: "Reminders",  sub: function () { return "One-off and weekly nudges"; } },
     shopping:   { title: "Shopping",   sub: function () { return "Lists for the store"; } },
     checklists: { title: "Checklists", sub: function () { return "Routines that reset each week"; } },
@@ -293,11 +389,159 @@
   }
 
   // -----------------------------------------------------------
+  // Habits & streaks
+  // -----------------------------------------------------------
+  function habitDoneOn(h, key) { return !!(h.history && h.history[key]); }
+
+  function addDays(key, n) {
+    var p = key.split("-");
+    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    d.setDate(d.getDate() + n);
+    return dateKey(d);
+  }
+
+  function currentStreak(h) {
+    // Streak counts consecutive days ending today (if ticked) or yesterday
+    // (today still counts as "not broken yet" until the day ends).
+    var cursor = todayKey();
+    if (!habitDoneOn(h, cursor)) {
+      cursor = addDays(cursor, -1);
+      if (!habitDoneOn(h, cursor)) return 0;
+    }
+    var streak = 0;
+    while (habitDoneOn(h, cursor)) { streak++; cursor = addDays(cursor, -1); }
+    return streak;
+  }
+
+  function bestStreak(h) {
+    var keys = Object.keys(h.history || {}).filter(function (k) { return h.history[k]; }).sort();
+    var best = 0, cur = 0, prev = null;
+    keys.forEach(function (k) {
+      if (prev && addDays(prev, 1) === k) cur++; else cur = 1;
+      if (cur > best) best = cur;
+      prev = k;
+    });
+    return best;
+  }
+
+  function last7Keys() {
+    var arr = [];
+    for (var i = 6; i >= 0; i--) arr.push(addDays(todayKey(), -i));
+    return arr;
+  }
+
+  function toggleHabitDay(h, key) {
+    if (!h.history) h.history = {};
+    if (h.history[key]) delete h.history[key];
+    else h.history[key] = true;
+    save();
+  }
+
+  function renderHabits() {
+    var el = $("#view-habits");
+    var html = "";
+    html += '<button class="btn btn-primary btn-block" data-act="add-habit" style="margin-bottom:14px">+ New habit</button>';
+
+    if (state.habits.length === 0) {
+      html += emptyBox("🔥", "No habits yet", "Add one and check it off each day to build a streak.");
+      el.innerHTML = html; return;
+    }
+
+    var tk = todayKey();
+    var days = last7Keys();
+    html += '<div class="sortable" id="habitSortable">';
+    state.habits.forEach(function (h) {
+      var streak = currentStreak(h);
+      var best = bestStreak(h);
+      var doneToday = habitDoneOn(h, tk);
+      html += '<div class="habit-card row-wrap" data-id="' + h.id + '">';
+      html += '<div class="habit-top">' +
+        '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' +
+        '<div class="habit-emoji">' + esc(h.emoji || "🔥") + "</div>" +
+        '<div class="habit-info">' +
+          '<div class="habit-name">' + esc(h.name) + "</div>" +
+          '<div class="habit-streak">' +
+            '<span class="flame">🔥 ' + streak + " day" + (streak === 1 ? "" : "s") + "</span>" +
+            '<span>Best: ' + best + "</span>" +
+          "</div>" +
+        "</div>" +
+        '<button class="habit-toggle ' + (doneToday ? "done" : "") + '" data-act="toggle-habit-today" data-id="' + h.id + '" aria-label="Mark today">' +
+          (doneToday ? "✓" : "") + "</button>" +
+        "</div>";
+      // last 7 days
+      html += '<div class="habit-week">';
+      days.forEach(function (k) {
+        var on = habitDoneOn(h, k);
+        var isToday = k === tk;
+        var lbl = WEEKDAYS_SHORT[new Date(k.split("-")[0], k.split("-")[1] - 1, k.split("-")[2]).getDay()][0];
+        html += '<div class="habit-day">' +
+          '<span class="dl">' + lbl + "</span>" +
+          '<button class="dd ' + (on ? "on" : "") + (isToday ? " today" : "") + '" data-act="toggle-habit-day" data-id="' + h.id + '" data-key="' + k + '">' +
+            (on ? "✓" : "") + "</button></div>";
+      });
+      html += "</div>";
+      html += '<div class="habit-actions" style="justify-content:flex-end;margin-top:8px">' +
+        '<button class="mini-btn" data-act="edit-habit" data-id="' + h.id + '" aria-label="Edit">✏️</button>' +
+        '<button class="mini-btn" data-act="del-habit" data-id="' + h.id + '" aria-label="Delete">🗑️</button>' +
+        "</div>";
+      html += "</div>";
+    });
+    html += "</div>";
+    el.innerHTML = html;
+    makeSortable($("#habitSortable"), state.habits);
+  }
+
+  function findHabit(id) { return state.habits.filter(function (h) { return h.id === id; })[0]; }
+
+  function habitModal(existing) {
+    var h = existing || { name: "", emoji: "🔥" };
+    var chosen = h.emoji || "🔥";
+    var body =
+      '<label class="field"><span>Habit name</span>' +
+      '<input type="text" id="hbName" placeholder="e.g. Meditate" value="' + esc(h.name) + '"></label>' +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Icon</span>' +
+      '<div class="cat-picker" id="hbEmoji">' +
+        HABIT_EMOJI.map(function (e) {
+          return '<button type="button" class="cat-opt ' + (e === chosen ? "is-active" : "") + '" data-e="' + e + '" style="font-size:1.2rem">' + e + "</button>";
+        }).join("") +
+      "</div></div>";
+    var foot = (existing ? '<button class="btn btn-danger" data-x="del">Delete</button>' : "") +
+      '<button class="btn btn-ghost" data-x="cancel">Cancel</button>' +
+      '<button class="btn btn-primary" data-x="save">Save</button>';
+    openModal({
+      title: existing ? "Edit habit" : "New habit",
+      body: body, foot: foot,
+      onMount: function (b, f) {
+        b.querySelector("#hbName").focus();
+        b.querySelector("#hbEmoji").addEventListener("click", function (e) {
+          var btn = e.target.closest("button[data-e]"); if (!btn) return;
+          chosen = btn.getAttribute("data-e");
+          b.querySelectorAll("#hbEmoji button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
+        });
+        f.querySelector('[data-x="cancel"]').onclick = closeModal;
+        if (existing) f.querySelector('[data-x="del"]').onclick = function () {
+          state.habits = state.habits.filter(function (x) { return x.id !== existing.id; });
+          save(); closeModal(); render(); toast("Habit deleted");
+        };
+        f.querySelector('[data-x="save"]').onclick = function () {
+          var name = b.querySelector("#hbName").value.trim();
+          if (!name) { b.querySelector("#hbName").focus(); return; }
+          if (existing) { existing.name = name; existing.emoji = chosen; }
+          else state.habits.push({ id: uid(), name: name, emoji: chosen, history: {}, created: Date.now() });
+          save(); closeModal(); render();
+          toast(existing ? "Habit updated" : "Habit added");
+        };
+      }
+    });
+  }
+
+  // -----------------------------------------------------------
   // Rendering
   // -----------------------------------------------------------
   function render() {
     refreshChecklistPeriods();
     if (currentView === "today") renderToday();
+    else if (currentView === "habits") renderHabits();
     else if (currentView === "reminders") renderReminders();
     else if (currentView === "shopping") renderShopping();
     else if (currentView === "checklists") renderChecklists();
@@ -310,8 +554,10 @@
     var list = activeList();
     var shopCount = list ? list.items.filter(function (i) { return !i.done; }).length : 0;
     var due = todaysReminders().filter(function (r) { return !r.done; }).length;
+    var habitsLeft = state.habits.filter(function (h) { return !habitDoneOn(h, todayKey()); }).length;
     setTabBadge("shopping", shopCount);
     setTabBadge("today", due);
+    setTabBadge("habits", habitsLeft);
   }
 
   function setTabBadge(view, n) {
@@ -328,12 +574,25 @@
   }
 
   // ---------- TODAY ----------
+  function agendaBucket(r) {
+    if (r.done) return 3;
+    if (r.time && isOverdue(r)) return 0;   // overdue first
+    if (r.time) return 1;                   // upcoming timed
+    return 2;                               // anytime
+  }
+  function agendaSort(a, b) {
+    var ba = agendaBucket(a), bb = agendaBucket(b);
+    if (ba !== bb) return ba - bb;
+    var ta = a.time || "99:99", tb = b.time || "99:99";
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  }
+
   function renderToday() {
     var el = $("#view-today");
     var tk = todayKey();
-    var items = todaysReminders();
+    var items = todaysReminders().slice().sort(agendaSort);
     var pending = items.filter(function (r) { return !r.done; });
-    var doneCount = items.length - pending.length;
+    var overdue = pending.filter(function (r) { return r.time && isOverdue(r); });
 
     var html = "";
 
@@ -348,25 +607,56 @@
     // Quick capture
     html += '<div class="quick-add">' +
       '<input type="text" id="todayInput" placeholder="Remember today…" autocomplete="off">' +
-      '<input type="time" id="todayTime" style="max-width:120px" aria-label="Time (optional)">' +
+      '<input type="time" id="todayTime" style="max-width:118px" aria-label="Time (optional)">' +
       '<button class="btn btn-primary" data-act="add-today">Add</button>' +
       '</div>';
 
     // Stats
     var cl = allTodayChecklistProgress();
+    var habitsDone = state.habits.filter(function (h) { return habitDoneOn(h, tk); }).length;
     html += '<div class="stat-row">' +
       '<div class="stat"><div class="n accent">' + pending.length + '</div><div class="l">to remember</div></div>' +
-      '<div class="stat"><div class="n">' + doneCount + '</div><div class="l">done today</div></div>' +
-      '<div class="stat"><div class="n">' + cl.done + "/" + cl.total + '</div><div class="l">checklist</div></div>' +
+      '<div class="stat" data-goto="habits" style="cursor:pointer"><div class="n">' + habitsDone + "/" + state.habits.length + '</div><div class="l">habits</div></div>' +
+      '<div class="stat" data-goto="checklists" style="cursor:pointer"><div class="n">' + cl.done + "/" + cl.total + '</div><div class="l">checklist</div></div>' +
       '</div>';
 
     // Today's reminders
-    html += '<div class="section-label">On the agenda</div>';
+    html += '<div class="section-label">On the agenda' + (overdue.length ? ' · <span style="color:var(--danger)">' + overdue.length + " overdue</span>" : "") + "</div>";
     if (items.length === 0) {
       html += emptyBox("🗒️", "Nothing scheduled for today", "Add something above, or set a reminder.");
     } else {
       html += '<div class="card"><div class="rows">';
       items.forEach(function (r) { html += reminderRow(r, true); });
+      html += "</div></div>";
+    }
+
+    // Coming up (future one-off reminders, soonest first)
+    var upcoming = state.reminders.filter(function (r) {
+      return r.kind === "once" && !r.done && r.date && r.date > tk;
+    }).sort(function (a, b) {
+      var ka = a.date + (a.time || "99:99"), kb = b.date + (b.time || "99:99");
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    }).slice(0, 4);
+    if (upcoming.length) {
+      html += '<div class="section-label">Coming up</div>';
+      html += '<div class="card"><div class="rows">';
+      upcoming.forEach(function (r) { html += reminderRow(r); });
+      html += "</div></div>";
+    }
+
+    // Habits quick toggles
+    if (state.habits.length) {
+      html += '<div class="section-label">Habits today</div>';
+      html += '<div class="card"><div class="rows">';
+      state.habits.forEach(function (h) {
+        var on = habitDoneOn(h, tk);
+        var streak = currentStreak(h);
+        html += '<div class="row">' +
+          '<button class="check round ' + (on ? "done" : "") + '" data-act="toggle-habit-today" data-id="' + h.id + '"></button>' +
+          '<div class="row-body"><div class="row-text">' + esc(h.emoji || "🔥") + " " + esc(h.name) + "</div>" +
+          (streak > 0 ? '<div class="row-meta"><span class="pill warn">🔥 ' + streak + " day" + (streak === 1 ? "" : "s") + "</span></div>" : "") +
+          "</div></div>";
+      });
       html += "</div></div>";
     }
 
@@ -386,6 +676,14 @@
           '<div class="progress"><span style="width:' + pct + '%"></span></div></div>';
       });
     }
+
+    // Weekly review entry
+    html += '<div class="section-label">This week</div>';
+    html += '<div class="review-card" data-act="open-review">' +
+      '<div class="rc-head"><span class="em">📅</span><div>' +
+      '<div class="rc-title">Weekly review</div>' +
+      '<div class="rc-sub">See how your week went &amp; jot a reflection</div>' +
+      "</div></div></div>";
 
     el.innerHTML = html;
   }
@@ -534,6 +832,7 @@
 
     html += '<div class="quick-add">' +
       '<input type="text" id="shopInput" placeholder="Add item…" autocomplete="off">' +
+      '<input type="text" id="shopQty" class="qty-input" placeholder="Qty" autocomplete="off" aria-label="Quantity">' +
       '<button class="btn btn-primary" data-act="add-shop">Add</button></div>';
 
     html += '<div class="card-head" style="padding:0 2px 4px">' +
@@ -545,27 +844,89 @@
 
     if (list.items.length === 0) {
       html += emptyBox("✨", "This list is empty", "Add your first item above.");
-    } else {
-      html += '<div class="card"><div class="rows">';
-      pending.forEach(function (it) { html += shopRow(it); });
+      el.innerHTML = html; return;
+    }
+
+    var anyCat = pending.some(function (i) { return i.cat; });
+    if (!anyCat) {
+      // Flat, drag-reorderable list
+      html += '<div class="card"><div class="rows sortable" id="shopSortable">';
+      pending.forEach(function (it) { html += shopRow(it, true); });
       html += "</div></div>";
-      if (done.length) {
-        html += '<div class="card-head" style="padding:0 2px 4px"><div class="card-sub" style="margin:0">In the cart · ' + done.length + '</div>' +
-          '<button class="btn btn-ghost btn-sm" data-act="clear-done">Clear</button></div>';
+    } else {
+      // Grouped by category (drag disabled while grouped — categories do the sorting)
+      CATEGORIES.forEach(function (cat) {
+        var inCat = pending.filter(function (i) { return i.cat === cat.id; });
+        if (!inCat.length) return;
+        html += '<div class="cat-head"><span class="cat-emoji">' + cat.emoji + "</span>" + esc(cat.name) + "</div>";
         html += '<div class="card"><div class="rows">';
-        done.forEach(function (it) { html += shopRow(it); });
+        inCat.forEach(function (it) { html += shopRow(it, false); });
+        html += "</div></div>";
+      });
+      var uncat = pending.filter(function (i) { return !i.cat; });
+      if (uncat.length) {
+        html += '<div class="cat-head"><span class="cat-emoji">•</span>Uncategorized</div>';
+        html += '<div class="card"><div class="rows">';
+        uncat.forEach(function (it) { html += shopRow(it, false); });
         html += "</div></div>";
       }
     }
+
+    if (done.length) {
+      html += '<div class="card-head" style="padding:0 2px 4px;margin-top:8px"><div class="card-sub" style="margin:0">In the cart · ' + done.length + '</div>' +
+        '<button class="btn btn-ghost btn-sm" data-act="clear-done">Clear</button></div>';
+      html += '<div class="card"><div class="rows">';
+      done.forEach(function (it) { html += shopRow(it, false); });
+      html += "</div></div>";
+    }
     el.innerHTML = html;
+    if (!anyCat) makeSortable($("#shopSortable"), list.items);
   }
 
-  function shopRow(it) {
-    return '<div class="row ' + (it.done ? "done" : "") + '">' +
+  function shopRow(it, draggable) {
+    return '<div class="row ' + (it.done ? "done" : "") + '" data-id="' + it.id + '">' +
+      (draggable && !it.done ? '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' : "") +
       '<button class="check round ' + (it.done ? "done" : "") + '" data-act="toggle-shop" data-iid="' + it.id + '" aria-label="Got it"></button>' +
-      '<div class="row-body"><div class="row-text">' + esc(it.text) + (it.qty ? ' <span class="pill">' + esc(it.qty) + "</span>" : "") + "</div></div>" +
-      '<div class="row-actions"><button class="mini-btn" data-act="del-shop" data-iid="' + it.id + '" aria-label="Remove">✕</button></div>' +
-      "</div>";
+      '<div class="row-body"><div class="row-text">' + esc(it.text) +
+        (it.qty ? ' <span class="pill qty-badge">×' + esc(it.qty) + "</span>" : "") + "</div></div>" +
+      '<div class="row-actions">' +
+        '<button class="mini-btn" data-act="edit-shop" data-iid="' + it.id + '" aria-label="Edit">✏️</button>' +
+        '<button class="mini-btn" data-act="del-shop" data-iid="' + it.id + '" aria-label="Remove">✕</button>' +
+      "</div></div>";
+  }
+
+  function shopItemModal(iid) {
+    var list = activeList(); if (!list) return;
+    var it = list.items.filter(function (i) { return i.id === iid; })[0]; if (!it) return;
+    var chosenCat = it.cat || "";
+    var body =
+      '<label class="field"><span>Item</span><input type="text" id="siText" value="' + esc(it.text) + '"></label>' +
+      '<label class="field"><span>Quantity (optional)</span><input type="text" id="siQty" placeholder="e.g. 2, 500g, 1 dozen" value="' + esc(it.qty || "") + '"></label>' +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Aisle / category</span>' +
+      '<div class="cat-picker" id="siCat">' +
+        '<button type="button" class="cat-opt ' + (chosenCat === "" ? "is-active" : "") + '" data-c="">None</button>' +
+        CATEGORIES.map(function (c) {
+          return '<button type="button" class="cat-opt ' + (c.id === chosenCat ? "is-active" : "") + '" data-c="' + c.id + '">' + c.emoji + " " + esc(c.name) + "</button>";
+        }).join("") +
+      "</div></div>";
+    openModal({
+      title: "Edit item", body: body,
+      foot: '<button class="btn btn-ghost" data-x="cancel">Cancel</button><button class="btn btn-primary" data-x="save">Save</button>',
+      onMount: function (b, f) {
+        b.querySelector("#siCat").addEventListener("click", function (e) {
+          var btn = e.target.closest("button[data-c]"); if (!btn) return;
+          chosenCat = btn.getAttribute("data-c");
+          b.querySelectorAll("#siCat button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
+        });
+        f.querySelector('[data-x="cancel"]').onclick = closeModal;
+        f.querySelector('[data-x="save"]').onclick = function () {
+          var text = b.querySelector("#siText").value.trim();
+          if (!text) { b.querySelector("#siText").focus(); return; }
+          it.text = text; it.qty = b.querySelector("#siQty").value.trim(); it.cat = chosenCat;
+          save(); closeModal(); render();
+        };
+      }
+    });
   }
 
   // ---------- CHECKLISTS ----------
@@ -591,9 +952,10 @@
           '<button class="mini-btn" data-act="del-checklist" data-cid="' + c.id + '" aria-label="Delete">🗑️</button>' +
         '</div></div>';
       html += '<div class="progress" style="margin-bottom:10px"><span style="width:' + pct + '%"></span></div>';
-      html += '<div class="rows">';
+      html += '<div class="rows sortable" data-clsort="' + c.id + '">';
       c.items.forEach(function (it) {
-        html += '<div class="row ' + (it.done ? "done" : "") + '">' +
+        html += '<div class="row ' + (it.done ? "done" : "") + '" data-id="' + it.id + '">' +
+          '<span class="drag-handle" data-drag aria-label="Reorder">⠿</span>' +
           '<button class="check ' + (it.done ? "done" : "") + '" data-act="toggle-cl" data-cid="' + c.id + '" data-iid="' + it.id + '"></button>' +
           '<div class="row-body"><div class="row-text">' + esc(it.text) + "</div></div>" +
           '<div class="row-actions">' +
@@ -609,6 +971,9 @@
       html += "</div>";
     });
     el.innerHTML = html;
+    state.checklists.forEach(function (c) {
+      makeSortable(el.querySelector('[data-clsort="' + c.id + '"]'), c.items);
+    });
   }
 
   function nextWeekResetKey() {
@@ -706,6 +1071,56 @@
 
   function emptyBox(icon, title, sub) {
     return '<div class="empty"><span class="big">' + icon + "</span><p><b>" + esc(title) + "</b></p><p>" + esc(sub) + "</p></div>";
+  }
+
+  // ---------- WEEKLY REVIEW ----------
+  function reviewModal() {
+    var wk = weekStartKey();
+    var days = [];
+    for (var i = 0; i < 7; i++) days.push(addDays(wk, i));
+    var tk = todayKey();
+
+    var habitChecks = 0;
+    state.habits.forEach(function (h) { days.forEach(function (d) { if (habitDoneOn(h, d)) habitChecks++; }); });
+
+    var clDone = 0, clTotal = 0;
+    state.checklists.forEach(function (c) { c.items.forEach(function (it) { clTotal++; if (it.done) clDone++; }); });
+    var clPct = clTotal ? Math.round((clDone / clTotal) * 100) : 0;
+
+    var remDone = state.reminders.filter(function (r) {
+      return r.kind === "once" && r.done && r.date >= wk && r.date <= addDays(wk, 6);
+    }).length;
+
+    var topStreak = 0, topName = "";
+    state.habits.forEach(function (h) { var s = currentStreak(h); if (s > topStreak) { topStreak = s; topName = h.name; } });
+
+    var review = state.reviews[wk] || { reflection: "" };
+
+    var weekLabel = fmtDate(wk).replace("Today", new Date(wk.split("-")[0], wk.split("-")[1] - 1, wk.split("-")[2]).toLocaleDateString(undefined, { month: "short", day: "numeric" }));
+    var sunLabel = new Date(addDays(wk, 6).split("-")[0], addDays(wk, 6).split("-")[1] - 1, addDays(wk, 6).split("-")[2]).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+    var body =
+      '<p class="rc-sub" style="margin:0 0 12px">Week of ' + esc(weekLabel) + " – " + esc(sunLabel) + "</p>" +
+      '<div class="review-stats">' +
+        '<div class="review-stat"><div class="n accent">' + habitChecks + '</div><div class="l">habit check-ins</div></div>' +
+        '<div class="review-stat"><div class="n">' + remDone + '</div><div class="l">reminders done</div></div>' +
+        '<div class="review-stat"><div class="n">' + clDone + "/" + clTotal + '</div><div class="l">checklist items (' + clPct + '%)</div></div>' +
+        '<div class="review-stat"><div class="n">🔥 ' + topStreak + '</div><div class="l">' + (topName ? "best streak · " + esc(topName) : "best streak") + '</div></div>' +
+      "</div>" +
+      '<label class="field"><span>Reflection — how did the week go?</span>' +
+      '<textarea id="rvText" placeholder="Wins, what to improve, plans for next week…" style="min-height:120px">' + esc(review.reflection || "") + "</textarea></label>";
+    openModal({
+      title: "Weekly review",
+      body: body,
+      foot: '<button class="btn btn-ghost" data-x="close">Close</button><button class="btn btn-primary" data-x="save">Save reflection</button>',
+      onMount: function (b, f) {
+        f.querySelector('[data-x="close"]').onclick = closeModal;
+        f.querySelector('[data-x="save"]').onclick = function () {
+          state.reviews[wk] = { reflection: b.querySelector("#rvText").value, savedAt: Date.now() };
+          save(); closeModal(); toast("Reflection saved");
+        };
+      }
+    });
   }
 
   // -----------------------------------------------------------
@@ -825,8 +1240,19 @@
       case "del-list": delList(); break;
       case "add-shop": addShopItem(); break;
       case "toggle-shop": toggleShop(actEl.getAttribute("data-iid")); break;
+      case "edit-shop": shopItemModal(actEl.getAttribute("data-iid")); break;
       case "del-shop": delShop(actEl.getAttribute("data-iid")); break;
       case "clear-done": clearShopDone(); break;
+
+      // Habits
+      case "add-habit": habitModal(null); break;
+      case "edit-habit": habitModal(findHabit(actEl.getAttribute("data-id"))); break;
+      case "del-habit": delHabit(actEl.getAttribute("data-id")); break;
+      case "toggle-habit-today": toggleHabitDay(findHabit(actEl.getAttribute("data-id")), todayKey()); render(); break;
+      case "toggle-habit-day": toggleHabitDay(findHabit(actEl.getAttribute("data-id")), actEl.getAttribute("data-key")); render(); break;
+
+      // Weekly review
+      case "open-review": reviewModal(); break;
 
       // Checklists
       case "add-checklist": checklistModal(null); break;
@@ -847,7 +1273,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
     if (e.target.id === "todayInput" || e.target.id === "todayTime") addTodayItem();
-    else if (e.target.id === "shopInput") addShopItem();
+    else if (e.target.id === "shopInput" || e.target.id === "shopQty") addShopItem();
   });
 
   // ---- finders ----
@@ -887,11 +1313,13 @@
   function addShopItem() {
     var input = $("#shopInput"); if (!input) return;
     var text = input.value.trim(); if (!text) { input.focus(); return; }
+    var qtyEl = $("#shopQty");
+    var qty = qtyEl ? qtyEl.value.trim() : "";
     var list = activeList(); if (!list) return;
-    // support "2 x milk" or "milk x2" style quantity capture is overkill; keep plain
-    list.items.unshift({ id: uid(), text: text, qty: "", done: false });
+    list.items.unshift({ id: uid(), text: text, qty: qty, cat: "", done: false });
     save(); render();
     var ni = $("#shopInput"); if (ni) { ni.value = ""; ni.focus(); }
+    var nq = $("#shopQty"); if (nq) nq.value = "";
   }
   function toggleShop(iid) {
     var list = activeList(); if (!list) return;
@@ -963,6 +1391,16 @@
         if (!ok) return;
         state.checklists = state.checklists.filter(function (x) { return x.id !== cid; });
         save(); render(); toast("Checklist deleted");
+      });
+  }
+
+  function delHabit(id) {
+    var h = findHabit(id); if (!h) return;
+    confirmModal("Delete habit?", "“" + h.name + "” and its streak history will be removed.", { danger: true, okLabel: "Delete" })
+      .then(function (ok) {
+        if (!ok) return;
+        state.habits = state.habits.filter(function (x) { return x.id !== id; });
+        save(); render(); toast("Habit deleted");
       });
   }
 

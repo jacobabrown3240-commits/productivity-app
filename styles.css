@@ -329,7 +329,8 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
   padding: 6px 2px;
   transition: color .12s;
 }
-.tab-ic { font-size: 1.25rem; line-height: 1; filter: grayscale(0.4); opacity: 0.7; transition: all .12s; }
+.tab-lbl { white-space: nowrap; }
+.tab-ic { font-size: 1.2rem; line-height: 1; filter: grayscale(0.4); opacity: 0.7; transition: all .12s; }
 .tab.is-active { color: var(--accent); }
 .tab.is-active .tab-ic { filter: none; opacity: 1; transform: translateY(-1px); }
 .tab-badge {
@@ -426,3 +427,96 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .stat .n { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
 .stat .l { font-size: 0.72rem; color: var(--text-faint); margin-top: 2px; }
 .stat .n.accent { color: var(--accent); }
+
+/* ---------- Drag to reorder ---------- */
+.drag-handle {
+  flex: 0 0 auto;
+  width: 26px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-faint);
+  cursor: grab;
+  touch-action: none;
+  font-size: 1rem;
+  user-select: none;
+  margin-left: -4px;
+}
+.drag-handle:active { cursor: grabbing; }
+.dragging {
+  background: var(--bg-elev-2) !important;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  opacity: 0.97;
+  position: relative;
+  z-index: 5;
+}
+.sortable.is-dragging { cursor: grabbing; }
+
+/* ---------- Shopping quantity + categories ---------- */
+.qty-badge { font-variant-numeric: tabular-nums; }
+.cat-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-faint); font-weight: 700;
+  margin: 14px 2px 6px;
+}
+.cat-head .cat-emoji { font-size: 0.95rem; }
+.qty-input { max-width: 74px; text-align: center; }
+.cat-picker { display: flex; flex-wrap: wrap; gap: 7px; }
+.cat-opt {
+  border: 1px solid var(--line); background: var(--bg-elev); color: var(--text-dim);
+  border-radius: 999px; padding: 7px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.cat-opt.is-active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* ---------- Habits ---------- */
+.habit-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 12px;
+}
+.habit-top { display: flex; align-items: center; gap: 12px; }
+.habit-emoji {
+  width: 44px; height: 44px; flex: 0 0 auto;
+  border-radius: 12px; background: var(--bg-elev-2);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.habit-info { flex: 1; min-width: 0; }
+.habit-name { font-weight: 700; font-size: 1rem; }
+.habit-streak { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+.habit-streak .flame { color: var(--warn); font-weight: 700; }
+.habit-toggle {
+  flex: 0 0 auto;
+  width: 46px; height: 46px; border-radius: 14px;
+  border: 2px solid var(--line); background: transparent; cursor: pointer;
+  font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center;
+  transition: all .14s;
+}
+.habit-toggle.done { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+.habit-toggle:active { transform: scale(0.9); }
+.habit-week { display: flex; gap: 6px; margin-top: 12px; justify-content: space-between; }
+.habit-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.habit-day .dl { font-size: 0.62rem; color: var(--text-faint); font-weight: 700; text-transform: uppercase; }
+.habit-day .dd {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--line); background: transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-faint);
+}
+.habit-day .dd.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.habit-day .dd.today { box-shadow: 0 0 0 2px var(--accent-soft); }
+.habit-day .dd.future { opacity: 0.4; pointer-events: none; }
+.habit-actions { display: flex; gap: 2px; }
+
+/* ---------- Weekly review ---------- */
+.review-card {
+  background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(13,148,136,0.08));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 15px; margin-bottom: 14px; cursor: pointer;
+}
+.review-card .rc-head { display: flex; align-items: center; gap: 10px; }
+.review-card .rc-head .em { font-size: 1.5rem; }
+.review-card .rc-title { font-weight: 750; font-size: 1rem; }
+.review-card .rc-sub { font-size: 0.8rem; color: var(--text-dim); }
+.review-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 14px; }
+.review-stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; }
+.review-stat .n { font-size: 1.4rem; font-weight: 800; }
+.review-stat .l { font-size: 0.74rem; color: var(--text-faint); margin-top: 2px; }

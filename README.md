@@ -11,23 +11,32 @@ sending reminder notifications.
 
 ## What's inside
 
-- **📌 Today** — a home screen that shows what's on today, plus a quick box to
-  capture "remember tonight / today" with an optional time. Anything with a
-  time will notify you.
+- **📌 Today** — a home dashboard: a quick box to capture "remember tonight /
+  today" with an optional time (anything with a time notifies you), your
+  agenda **sorted by what's due** (overdue first), a **Coming up** peek at the
+  next few days, quick habit check-offs, checklist progress, and a link to your
+  weekly review.
+- **🔥 Habits** — track daily habits and build a **streak**. Tick today or any
+  of the last 7 days, see your current and best streak, and pick an icon for
+  each habit. Reorder them by dragging.
 - **⏰ Reminders** — one-off reminders for a specific day *and* **weekly**
   recurring reminders (bin night, gym, call home). Pause, edit or delete any of
   them.
-- **🛒 Shopping** — a shopping list you can tick off as you go. Make as many
-  named lists as you like (Groceries, Hardware store, Costco…) and clear checked
-  items in one tap.
+- **🛒 Shopping** — a shopping list you tick off as you go, with optional
+  **quantities** and **categories/aisles** (Produce, Dairy, Frozen…). Items
+  group by aisle automatically once you categorise them, or drag to reorder a
+  flat list. Make as many named lists as you like and clear checked items in one
+  tap.
 - **✅ Checklists** — little routines that **auto-reset every week** so you start
-  each week fresh. Add, rename, edit and delete checklists and their items
-  however you need. Two starters are included ("Weekly reset" and "Every
-  morning").
+  each week fresh. Add, rename, edit, delete and **drag to reorder** items. Two
+  starters are included ("Weekly reset" and "Every morning").
 - **📝 Notes** — a simple notepad for anything else.
+- **📅 Weekly review** — a summary of your week (habit check-ins, reminders
+  done, checklist completion, best streak) with a saved reflection for each
+  week.
 
-Extras: dark / light theme, one-tap **backup export/import** (JSON), and a
-progress view on the Today screen.
+Extras: dark / light theme, one-tap **backup export/import** (JSON), tab badges
+for what needs attention, and drag-to-reorder throughout.
 
 ## Notifications — how they work
 
@@ -63,6 +72,6 @@ to restore it.
 
 ## Ideas for later
 
-Habit streaks, item quantities/categories on shopping lists, drag-to-reorder,
-due-date sorting, and shared lists are all natural next steps — the code is
-organised so each feature is easy to extend.
+Shared/synced lists, habit reminders at a set time, recurring one-off
+reminders, monthly/yearly habit calendars, and search across notes are all
+natural next steps — the code is organised so each feature is easy to extend.
