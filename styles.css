@@ -482,44 +482,124 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .cat-opt.is-active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
 /* ---------- Habits ---------- */
-.habit-card {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 14px; margin-bottom: 12px;
-}
-.habit-top { display: flex; align-items: center; gap: 12px; }
-.habit-icon {
-  width: 44px; height: 44px; flex: 0 0 auto;
-  border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.01em;
-}
 .habit-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; margin-left: -2px; }
-.habit-streak .flame { display: inline-flex; align-items: center; gap: 4px; }
-.habit-info { flex: 1; min-width: 0; }
-.habit-name { font-weight: 700; font-size: 1rem; }
-.habit-streak { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
-.habit-streak .flame { color: var(--warn); font-weight: 700; }
-.habit-toggle {
-  flex: 0 0 auto;
-  width: 46px; height: 46px; border-radius: 14px;
-  border: 2px solid var(--line); background: transparent; cursor: pointer;
-  font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center;
-  transition: all .14s;
+
+/* Month switcher */
+.habit-monthbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 12px;
 }
-.habit-toggle.done { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
-.habit-toggle:active { transform: scale(0.9); }
-.habit-week { display: flex; gap: 6px; margin-top: 12px; justify-content: space-between; }
-.habit-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.habit-day .dl { font-size: 0.62rem; color: var(--text-faint); font-weight: 700; text-transform: uppercase; }
-.habit-day .dd {
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 1.5px solid var(--line); background: transparent; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-faint);
+.habit-month-label { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
+.month-nav {
+  width: 38px; height: 38px; flex: 0 0 auto;
+  border: 1px solid var(--line); background: var(--bg-elev); color: var(--text-dim);
+  border-radius: 11px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
 }
-.habit-day .dd.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.habit-day .dd.today { box-shadow: 0 0 0 2px var(--accent-soft); }
-.habit-day .dd.future { opacity: 0.4; pointer-events: none; }
-.habit-actions { display: flex; gap: 2px; }
+.month-nav:active { transform: scale(0.92); }
+
+/* Summary strip */
+.habit-summary {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-bottom: 10px;
+}
+.habit-summary .hstat {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 6px; text-align: center;
+}
+.habit-summary .hstat .n { font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+.habit-summary .hstat .n.accent { color: var(--accent); }
+.habit-summary .hstat .l { font-size: 0.68rem; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+
+.habit-progress {
+  height: 8px; border-radius: 999px; background: var(--bg-elev-2);
+  overflow: hidden; margin-bottom: 16px;
+}
+.habit-progress > span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .3s ease;
+}
+
+/* The single connected grid */
+.htrack {
+  overflow-x: auto; overflow-y: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card);
+  -webkit-overflow-scrolling: touch;
+}
+.hgrid { width: max-content; min-width: 100%; }
+.hrow {
+  display: grid;
+  grid-template-columns: 128px repeat(var(--days), 30px);
+}
+.hrow + .hrow, .hbody .hrow { border-top: 1px solid var(--line-soft); }
+
+/* Sticky habit-name column */
+.hname {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 6px 0 4px; min-width: 0; height: 44px;
+}
+.hname-head {
+  font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-faint);
+  padding-left: 10px; height: 40px;
+}
+.hname .drag-handle { flex: 0 0 auto; width: 18px; height: 32px; margin-left: -2px; color: var(--text-faint); cursor: grab; touch-action: none; display: inline-flex; align-items: center; justify-content: center; }
+.hname .drag-handle .ic { width: 15px; height: 15px; }
+.hname-btn {
+  flex: 1; min-width: 0; background: transparent; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; padding: 4px 0; text-align: left;
+  color: var(--text);
+}
+.hname-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.hname-txt {
+  font-weight: 700; font-size: 0.86rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.hname-streak {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px;
+  font-size: 0.72rem; font-weight: 800; color: var(--warn);
+}
+
+/* Day header cells */
+.hhead .hname { height: 40px; }
+.hhcell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 40px; gap: 1px;
+}
+.hhcell .hwd { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; color: var(--text-faint); }
+.hhcell .hdn { font-size: 0.72rem; font-weight: 700; color: var(--text-dim); }
+.hhcell.wknd { background: var(--bg-elev); }
+.hhcell.today .hdn { color: var(--accent); }
+.hhcell.today {
+  background: var(--accent-soft);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Day toggle cells */
+.hcell {
+  border: none; background: transparent; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  height: 44px;
+}
+.hbody .hcell::before {
+  content: ""; width: 20px; height: 20px; border-radius: 6px;
+  border: 1.5px solid var(--line); background: transparent;
+  transition: transform .1s;
+}
+.hbody .hcell.on::before {
+  border-color: var(--hc, var(--accent));
+  background: var(--hc, var(--accent));   /* --hc set inline per habit */
+}
+.hbody .hcell.on { background: var(--accent-soft); }
+.hbody .hcell.today { box-shadow: inset 0 0 0 2px var(--accent-soft); }
+.hbody .hcell.future { cursor: default; }
+.hbody .hcell.future::before { opacity: 0.35; }
+.hbody .hcell:not(.future):active::before { transform: scale(0.82); }
 
 /* ---------- Weekly review ---------- */
 .review-card {

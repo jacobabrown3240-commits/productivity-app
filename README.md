@@ -16,9 +16,10 @@ sending reminder notifications.
   agenda **sorted by what's due** (overdue first), a **Coming up** peek at the
   next few days, quick habit check-offs, checklist progress, and a link to your
   weekly review.
-- **Habits** — track daily habits and build a **streak**. Tick today or any
-  of the last 7 days, see your current and best streak, and pick an icon for
-  each habit with a colour. Reorder them by dragging.
+- **Habits** — all your habits in **one month-at-a-glance grid** (habits down
+  the side, days across the top) instead of separate cards. Tap any day to
+  check it off, flip between months, and watch the monthly completion % and
+  per-habit streaks update. Pick a colour for each habit and drag to reorder.
 - **Reminders** — one-off reminders for a specific day *and* **weekly**
   recurring reminders (bin night, gym, call home). Pause, edit or delete any of
   them.
