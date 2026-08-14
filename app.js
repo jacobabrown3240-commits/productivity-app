@@ -561,9 +561,18 @@
     if (track) {
       if (habitScrollX < 0) {
         var todayCell = track.querySelector(".hhead .hcell.today");
-        track.scrollLeft = todayCell
-          ? Math.max(0, todayCell.offsetLeft - track.clientWidth / 2 + todayCell.offsetWidth / 2)
-          : 0;
+        if (todayCell) {
+          // Centre today in the region NOT covered by the sticky name column,
+          // then clamp so it never scrolls past either edge.
+          var nameCell = track.querySelector(".hname");
+          var nameW = nameCell ? nameCell.offsetWidth : 0;
+          var visible = track.clientWidth - nameW;
+          var target = todayCell.offsetLeft - nameW - Math.max(0, (visible - todayCell.offsetWidth) / 2);
+          var maxScroll = track.scrollWidth - track.clientWidth;
+          track.scrollLeft = Math.max(0, Math.min(target, maxScroll));
+        } else {
+          track.scrollLeft = 0;
+        }
       } else {
         track.scrollLeft = habitScrollX;
       }
