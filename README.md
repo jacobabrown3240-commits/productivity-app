@@ -11,18 +11,17 @@ sending reminder notifications.
 
 ## What's inside
 
-- **Today** — a home dashboard: a quick box to capture "remember tonight /
-  today" with an optional time (anything with a time notifies you), your
-  agenda **sorted by what's due** (overdue first), a **Coming up** peek at the
-  next few days, quick habit check-offs, checklist progress, and a link to your
-  weekly review.
 - **Habits** — all your habits in **one month-at-a-glance grid** (habits down
   the side, days across the top) instead of separate cards. Tap any day to
   check it off, flip between months, and watch the monthly completion % and
   per-habit streaks update. Pick a colour for each habit and drag to reorder.
-- **Reminders** — one-off reminders for a specific day *and* **weekly**
-  recurring reminders (bin night, gym, call home). Pause, edit or delete any of
-  them.
+  This is the home screen the app opens on.
+- **Reminders** — set a **notification** for anything you shouldn't forget:
+  one-off reminders for a specific day (pick up milk after work, a dentist
+  appointment) *and* **weekly** recurring reminders (bin night, gym, call
+  home). Give it a time and Nest nudges you; leave the time off for a plain
+  to-do. Pause, edit or delete any of them, and open your weekly review from
+  the bottom of the list.
 - **Shopping** — a shopping list you tick off as you go, with optional
   **quantities** and **categories/aisles** (Produce, Dairy, Frozen and so on). Items
   group by aisle automatically once you categorise them, or drag to reorder a

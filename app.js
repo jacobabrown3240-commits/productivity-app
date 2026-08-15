@@ -37,6 +37,7 @@
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/>',
     flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    "message-circle": '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
     "bell-off": '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.9 17.9 0 0 1 18 8"/><path d="M6.26 6.26A5.9 5.9 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/>',
     bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
     "check-square": '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
@@ -361,16 +362,15 @@
   // -----------------------------------------------------------
   // Navigation
   // -----------------------------------------------------------
-  var currentView = "today";
+  var currentView = "habits";
   // Habits grid: which month is on screen, and the tracker's horizontal
   // scroll offset (-1 means "auto-centre on today" on the next render).
   var habitYear = new Date().getFullYear();
   var habitMonthIdx = new Date().getMonth();
   var habitScrollX = -1;
   var VIEW_META = {
-    today:      { title: "Today",      sub: function () { return new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); } },
     habits:     { title: "Habits",     sub: function () { return "One grid, every habit, all month"; } },
-    reminders:  { title: "Reminders",  sub: function () { return "One-off and weekly nudges"; } },
+    reminders:  { title: "Reminders",  sub: function () { return "Nudges so you don’t forget"; } },
     shopping:   { title: "Shopping",   sub: function () { return "Lists for the store"; } },
     checklists: { title: "Checklists", sub: function () { return "Routines that reset each week"; } },
     notes:      { title: "Notes",      sub: function () { return "Your pocket notepad"; } }
@@ -638,8 +638,7 @@
   // -----------------------------------------------------------
   function render() {
     refreshChecklistPeriods();
-    if (currentView === "today") renderToday();
-    else if (currentView === "habits") renderHabits();
+    if (currentView === "habits") renderHabits();
     else if (currentView === "reminders") renderReminders();
     else if (currentView === "shopping") renderShopping();
     else if (currentView === "checklists") renderChecklists();
@@ -654,7 +653,7 @@
     var due = todaysReminders().filter(function (r) { return !r.done; }).length;
     var habitsLeft = state.habits.filter(function (h) { return !habitDoneOn(h, todayKey()); }).length;
     setTabBadge("shopping", shopCount);
-    setTabBadge("today", due);
+    setTabBadge("reminders", due);
     setTabBadge("habits", habitsLeft);
   }
 
@@ -669,130 +668,6 @@
     } else if (badge) {
       badge.remove();
     }
-  }
-
-  // ---------- TODAY ----------
-  function agendaBucket(r) {
-    if (r.done) return 3;
-    if (r.time && isOverdue(r)) return 0;   // overdue first
-    if (r.time) return 1;                   // upcoming timed
-    return 2;                               // anytime
-  }
-  function agendaSort(a, b) {
-    var ba = agendaBucket(a), bb = agendaBucket(b);
-    if (ba !== bb) return ba - bb;
-    var ta = a.time || "99:99", tb = b.time || "99:99";
-    return ta < tb ? -1 : ta > tb ? 1 : 0;
-  }
-
-  function renderToday() {
-    var el = $("#view-today");
-    var tk = todayKey();
-    var items = todaysReminders().slice().sort(agendaSort);
-    var pending = items.filter(function (r) { return !r.done; });
-    var overdue = pending.filter(function (r) { return r.time && isOverdue(r); });
-
-    var html = "";
-
-    // Permission banner
-    if (supportsNotify() && Notification.permission === "default") {
-      html += '<div class="banner" id="notifBanner">' +
-        '<span class="banner-ic">' + ic("bell") + "</span>" +
-        '<div class="banner-text"><b>Turn on reminders</b><small>Let Nest notify you when something is due.</small></div>' +
-        '<button class="btn btn-primary btn-sm" data-act="ask-notify">Enable</button></div>';
-    }
-
-    // Quick capture
-    html += '<div class="quick-add">' +
-      '<input type="text" id="todayInput" placeholder="Remember today…" autocomplete="off">' +
-      '<input type="time" id="todayTime" style="max-width:118px" aria-label="Time (optional)">' +
-      '<button class="btn btn-primary" data-act="add-today">Add</button>' +
-      '</div>';
-
-    // Stats
-    var cl = allTodayChecklistProgress();
-    var habitsDone = state.habits.filter(function (h) { return habitDoneOn(h, tk); }).length;
-    html += '<div class="stat-row">' +
-      '<div class="stat"><div class="n accent">' + pending.length + '</div><div class="l">to remember</div></div>' +
-      '<div class="stat" data-goto="habits" style="cursor:pointer"><div class="n">' + habitsDone + "/" + state.habits.length + '</div><div class="l">habits</div></div>' +
-      '<div class="stat" data-goto="checklists" style="cursor:pointer"><div class="n">' + cl.done + "/" + cl.total + '</div><div class="l">checklist</div></div>' +
-      '</div>';
-
-    // Today's reminders
-    html += '<div class="section-label">On the agenda' + (overdue.length ? ' · <span style="color:var(--danger)">' + overdue.length + " overdue</span>" : "") + "</div>";
-    if (items.length === 0) {
-      html += emptyBox("clock", "Nothing scheduled for today", "Add something above, or set a reminder.");
-    } else {
-      html += '<div class="card"><div class="rows">';
-      items.forEach(function (r) { html += reminderRow(r, true); });
-      html += "</div></div>";
-    }
-
-    // Coming up (future one-off reminders, soonest first)
-    var upcoming = state.reminders.filter(function (r) {
-      return r.kind === "once" && !r.done && r.date && r.date > tk;
-    }).sort(function (a, b) {
-      var ka = a.date + (a.time || "99:99"), kb = b.date + (b.time || "99:99");
-      return ka < kb ? -1 : ka > kb ? 1 : 0;
-    }).slice(0, 4);
-    if (upcoming.length) {
-      html += '<div class="section-label">Coming up</div>';
-      html += '<div class="card"><div class="rows">';
-      upcoming.forEach(function (r) { html += reminderRow(r); });
-      html += "</div></div>";
-    }
-
-    // Habits quick toggles
-    if (state.habits.length) {
-      html += '<div class="section-label">Habits today</div>';
-      html += '<div class="card"><div class="rows">';
-      state.habits.forEach(function (h) {
-        var on = habitDoneOn(h, tk);
-        var streak = currentStreak(h);
-        html += '<div class="row">' +
-          '<button class="check round ' + (on ? "done" : "") + '" data-act="toggle-habit-today" data-id="' + h.id + '"></button>' +
-          '<span class="habit-dot" style="background:' + esc(h.color || HABIT_COLORS[0]) + '"></span>' +
-          '<div class="row-body"><div class="row-text">' + esc(h.name) + "</div>" +
-          (streak > 0 ? '<div class="row-meta"><span class="pill warn">' + ic("flame", "ic-sm") + " " + streak + " day" + (streak === 1 ? "" : "s") + "</span></div>" : "") +
-          "</div></div>";
-      });
-      html += "</div></div>";
-    }
-
-    // Peek at checklists needing attention
-    var openCl = state.checklists.filter(function (c) {
-      return c.items.some(function (i) { return !i.done; });
-    });
-    if (openCl.length) {
-      html += '<div class="section-label">Checklists</div>';
-      openCl.slice(0, 3).forEach(function (c) {
-        var total = c.items.length;
-        var done = c.items.filter(function (i) { return i.done; }).length;
-        var pct = total ? Math.round((done / total) * 100) : 0;
-        html += '<div class="card" data-goto="checklists" style="cursor:pointer">' +
-          '<div class="card-head"><div class="card-title">' + esc(c.title) + '</div>' +
-          '<span class="pill">' + done + "/" + total + '</span></div>' +
-          '<div class="progress"><span style="width:' + pct + '%"></span></div></div>';
-      });
-    }
-
-    // Weekly review entry
-    html += '<div class="section-label">This week</div>';
-    html += '<div class="review-card" data-act="open-review">' +
-      '<div class="rc-head"><span class="em">' + ic("calendar") + "</span><div>" +
-      '<div class="rc-title">Weekly review</div>' +
-      '<div class="rc-sub">See how your week went &amp; jot a reflection</div>' +
-      "</div></div></div>";
-
-    el.innerHTML = html;
-  }
-
-  function allTodayChecklistProgress() {
-    var done = 0, total = 0;
-    state.checklists.forEach(function (c) {
-      c.items.forEach(function (i) { total++; if (i.done) done++; });
-    });
-    return { done: done, total: total };
   }
 
   function reminderRow(r, compact) {
@@ -822,6 +697,15 @@
   function renderReminders() {
     var el = $("#view-reminders");
     var html = "";
+
+    // Permission banner — the way people turn notifications on.
+    if (supportsNotify() && Notification.permission === "default") {
+      html += '<div class="banner" id="notifBanner">' +
+        '<span class="banner-ic">' + ic("bell") + "</span>" +
+        '<div class="banner-text"><b>Turn on reminders</b><small>Let Nest notify you when something is due.</small></div>' +
+        '<button class="btn btn-primary btn-sm" data-act="ask-notify">Enable</button></div>';
+    }
+
     html += '<button class="btn btn-primary btn-block" data-act="add-reminder" style="margin-bottom:14px">+ New reminder</button>';
 
     var once = state.reminders.filter(function (r) { return r.kind === "once"; })
@@ -838,8 +722,16 @@
     else { html += '<div class="card"><div class="rows">'; weekly.forEach(function (r) { html += reminderRow(r); }); html += "</div></div>"; }
 
     html += '<div class="section-label">One-off</div>';
-    if (once.length === 0) html += emptyBox("calendar", "No one-off reminders", "Add appointments or things for a specific day.");
+    if (once.length === 0) html += emptyBox("calendar", "No one-off reminders", "For a specific day — pick up milk after work, a dentist appointment, call the bank…");
     else { html += '<div class="card"><div class="rows">'; once.forEach(function (r) { html += reminderRow(r); }); html += "</div></div>"; }
+
+    // Weekly review entry
+    html += '<div class="section-label">This week</div>';
+    html += '<div class="review-card" data-act="open-review">' +
+      '<div class="rc-head"><span class="em">' + ic("calendar") + "</span><div>" +
+      '<div class="rc-title">Weekly review</div>' +
+      '<div class="rc-sub">See how your week went &amp; jot a reflection</div>' +
+      "</div></div></div>";
 
     html += '<p class="hint">Nest checks for due reminders while it’s open and when you reopen it. Keep it installed on your home screen and notifications on for the best nudges.</p>';
     el.innerHTML = html;
@@ -1299,7 +1191,7 @@
         toast("Reminder: " + r.text);
       }
     });
-    if (fired) { save(); if (currentView === "today" || currentView === "reminders") render(); }
+    if (fired) { save(); if (currentView === "reminders") render(); }
   }
 
   // -----------------------------------------------------------
@@ -1323,14 +1215,11 @@
     switch (act) {
       case "ask-notify": askNotify(); break;
 
-      // Today
-      case "add-today": addTodayItem(); break;
+      // Reminders
+      case "add-reminder": reminderModal(null); break;
       case "toggle-reminder": toggleReminder(actEl.getAttribute("data-rid")); break;
       case "edit-reminder": reminderModal(findReminder(actEl.getAttribute("data-rid"))); break;
       case "del-reminder": delReminder(actEl.getAttribute("data-rid")); break;
-
-      // Reminders
-      case "add-reminder": reminderModal(null); break;
 
       // Shopping
       case "pick-list": state.activeListId = actEl.getAttribute("data-lid"); save(); render(); break;
@@ -1349,7 +1238,6 @@
       case "add-habit": habitModal(null); break;
       case "edit-habit": habitModal(findHabit(actEl.getAttribute("data-id"))); break;
       case "del-habit": delHabit(actEl.getAttribute("data-id")); break;
-      case "toggle-habit-today": toggleHabitDay(findHabit(actEl.getAttribute("data-id")), todayKey()); render(); break;
       case "toggle-habit-day": toggleHabitDay(findHabit(actEl.getAttribute("data-id")), actEl.getAttribute("data-key")); render(); break;
 
       // Weekly review
@@ -1373,33 +1261,13 @@
   // Enter-to-add on quick inputs
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
-    if (e.target.id === "todayInput" || e.target.id === "todayTime") addTodayItem();
-    else if (e.target.id === "shopInput" || e.target.id === "shopQty") addShopItem();
+    if (e.target.id === "shopInput" || e.target.id === "shopQty") addShopItem();
   });
 
   // ---- finders ----
   function findReminder(id) { return state.reminders.filter(function (r) { return r.id === id; })[0]; }
   function findChecklist(id) { return state.checklists.filter(function (c) { return c.id === id; })[0]; }
   function findNote(id) { return state.notes.filter(function (n) { return n.id === id; })[0]; }
-
-  // ---- Today actions ----
-  function addTodayItem() {
-    var input = $("#todayInput");
-    var timeEl = $("#todayTime");
-    if (!input) return;
-    var text = input.value.trim();
-    if (!text) { input.focus(); return; }
-    var time = timeEl ? timeEl.value : "";
-    state.reminders.push({
-      id: uid(), text: text, kind: "once", date: todayKey(), time: time,
-      done: false, enabled: true, created: Date.now(), lastFired: ""
-    });
-    save(); render();
-    var ni = $("#todayInput"); if (ni) { ni.value = ""; ni.focus(); }
-    var nt = $("#todayTime"); if (nt) nt.value = "";
-    toast(time ? "Reminder set for " + fmtTime(time) : "Added to today");
-    if (time) maybeAskNotify();
-  }
 
   function toggleReminder(id) {
     var r = findReminder(id); if (!r) return;
@@ -1548,7 +1416,7 @@
           confirmModal("Reset everything?", "This deletes all notes, lists, checklists and reminders on this device.", { danger: true, okLabel: "Reset" })
             .then(function (ok) {
               if (!ok) return;
-              state = defaultState(); save(); applyTheme(); closeModal(); setView("today"); toast("Fresh start");
+              state = defaultState(); save(); applyTheme(); closeModal(); setView("habits"); toast("Fresh start");
             });
         };
         f.querySelector('[data-x="close"]').onclick = closeModal;
@@ -1579,7 +1447,7 @@
           if (!data || typeof data !== "object") throw new Error("bad");
           state = data;
           if (!state.settings) state.settings = { theme: "dark" };
-          save(); applyTheme(); closeModal(); setView("today"); toast("Data restored");
+          save(); applyTheme(); closeModal(); setView("habits"); toast("Data restored");
         } catch (e) { toast("Couldn’t read that file"); }
       };
       reader.readAsText(file);
@@ -1625,7 +1493,7 @@
 
   applyTheme();
   updateNotifButton();
-  setView("today");
+  setView("habits");
   checkDue();
 
   // Re-check reminders periodically and when the app regains focus.

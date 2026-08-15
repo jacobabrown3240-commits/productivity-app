@@ -431,15 +431,6 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .seg button { flex: 1; border: none; background: transparent; color: var(--text-dim); padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 650; cursor: pointer; }
 .seg button.is-active { background: var(--accent); color: #fff; }
 
-.stat-row { display: flex; gap: 10px; margin-bottom: 14px; }
-.stat {
-  flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: 12px; text-align: center;
-}
-.stat .n { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
-.stat .l { font-size: 0.72rem; color: var(--text-faint); margin-top: 2px; }
-.stat .n.accent { color: var(--accent); }
-
 /* ---------- Drag to reorder ---------- */
 .drag-handle {
   flex: 0 0 auto;
