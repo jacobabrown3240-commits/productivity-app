@@ -11,11 +11,12 @@ sending reminder notifications.
 
 ## What's inside
 
-- **Habits** — all your habits in **one month-at-a-glance grid** (habits down
-  the side, days across the top) instead of separate cards. Tap any day to
-  check it off, flip between months, and watch the monthly completion % and
-  per-habit streaks update. Pick a colour for each habit and drag to reorder.
-  This is the home screen the app opens on.
+- **Week** — a **weekly task + time tracker** (the home screen). Add tasks,
+  assign each a **day of the week**, a **category** (Work or Personal) and a
+  rough **duration**, then tick them off. See weekly completion **progress
+  bars** overall and per category, plus a **time-by-day** breakdown showing how
+  many hours each day is taken up by Work vs Personal. Flip between weeks with
+  the arrows.
 - **Reminders** — set a **notification** for anything you shouldn't forget:
   one-off reminders for a specific day (pick up milk after work, a dentist
   appointment) *and* **weekly** recurring reminders (bin night, gym, call
@@ -31,9 +32,9 @@ sending reminder notifications.
   each week fresh. Add, rename, edit, delete and **drag to reorder** items. Two
   starters are included ("Weekly reset" and "Every morning").
 - **Notes** — a simple notepad for anything else.
-- **Weekly review** — a summary of your week (habit check-ins, reminders
-  done, checklist completion, best streak) with a saved reflection for each
-  week.
+- **Weekly review** — a summary of your week (tasks done and time completed,
+  reminders done, checklist completion) with a saved reflection for each week.
+  Open it from the bottom of the Reminders tab.
 
 Extras: dark / light theme, one-tap **backup export/import** (JSON), tab badges
 for what needs attention, and drag-to-reorder throughout.

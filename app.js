@@ -55,7 +55,8 @@
     pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
     grip: '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>',
     "chevron-left": '<polyline points="15 18 9 12 15 6"/>',
-    "chevron-right": '<polyline points="9 18 15 12 9 6"/>'
+    "chevron-right": '<polyline points="9 18 15 12 9 6"/>',
+    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'
   };
   var ICONS_FILLED = { grip: 1, pause: 1, flame: 1 };
   function ic(name, cls) {
@@ -66,8 +67,6 @@
       ' aria-hidden="true">' + (ICONS[name] || "") + "</svg>";
   }
 
-  // Colour palette for habit tiles (replaces emoji icons).
-  var HABIT_COLORS = ["#10b981", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#f97316"];
   function defaultState() {
     return {
       version: 1,
@@ -110,17 +109,20 @@
           ]
         }
       ],
-      habits: [
-        { id: uid(), name: "Drink water", color: HABIT_COLORS[1], history: {}, created: Date.now() },
-        { id: uid(), name: "Move / exercise", color: HABIT_COLORS[0], history: {}, created: Date.now() },
-        { id: uid(), name: "Read", color: HABIT_COLORS[2], history: {}, created: Date.now() }
+      tasks: [
+        { id: uid(), text: "Deep work block", day: 1, cat: "work", minutes: 120, done: {}, created: Date.now() },
+        { id: uid(), text: "Emails & admin", day: 1, cat: "work", minutes: 45, done: {}, created: Date.now() },
+        { id: uid(), text: "Gym / workout", day: 2, cat: "personal", minutes: 60, done: {}, created: Date.now() },
+        { id: uid(), text: "Team meeting", day: 3, cat: "work", minutes: 60, done: {}, created: Date.now() },
+        { id: uid(), text: "Grocery shopping", day: 6, cat: "personal", minutes: 45, done: {}, created: Date.now() },
+        { id: uid(), text: "Plan next week", day: 0, cat: "work", minutes: 30, done: {}, created: Date.now() }
       ],
       reviews: {},
       notes: [
         {
           id: uid(),
           title: "Welcome to Nest",
-          body: "This is your pocket notepad.\n\n• Jot anything here\n• Tap Today to capture stuff to remember\n• Track daily habits and build a streak\n• Turn on notifications up top so reminders can nudge you\n\nTap a note to edit it.",
+          body: "This is your pocket notepad.\n\n• Jot anything here\n• Plan your week on the Week tab — give each task a day and a rough time\n• Set reminders so you don't forget things\n• Turn on notifications up top so reminders can nudge you\n\nTap a note to edit it.",
           updated: Date.now()
         }
       ],
@@ -138,7 +140,7 @@
       if (!s.lists) s.lists = [];
       if (!s.checklists) s.checklists = [];
       if (!s.notes) s.notes = [];
-      if (!s.habits) s.habits = [];
+      if (!s.tasks) s.tasks = [];
       if (!s.reviews) s.reviews = {};
       if (!s.settings) s.settings = { theme: "dark" };
       // backfill new per-item fields
@@ -148,10 +150,13 @@
           if (it.qty === undefined) it.qty = "";
         });
       });
-      s.habits.forEach(function (h, i) {
-        if (!h.history) h.history = {};
-        if (!h.color) h.color = HABIT_COLORS[i % HABIT_COLORS.length];
+      s.tasks.forEach(function (t) {
+        if (!t.done || typeof t.done !== "object") t.done = {};
+        if (typeof t.day !== "number") t.day = 1;
+        if (t.cat !== "personal") t.cat = "work";
+        if (typeof t.minutes !== "number") t.minutes = 30;
       });
+      delete s.habits;
       return s;
     } catch (e) {
       return defaultState();
@@ -363,13 +368,10 @@
   // Navigation
   // -----------------------------------------------------------
   var currentView = "habits";
-  // Habits grid: which month is on screen, and the tracker's horizontal
-  // scroll offset (-1 means "auto-centre on today" on the next render).
-  var habitYear = new Date().getFullYear();
-  var habitMonthIdx = new Date().getMonth();
-  var habitScrollX = -1;
+  // Weekly tracker: which week is on screen (0 = this week, -1 = last week…).
+  var weekOffset = 0;
   var VIEW_META = {
-    habits:     { title: "Habits",     sub: function () { return "One grid, every habit, all month"; } },
+    habits:     { title: "Weekly Tracker", sub: function () { return "Tasks by day · time by category"; } },
     reminders:  { title: "Reminders",  sub: function () { return "Nudges so you don’t forget"; } },
     shopping:   { title: "Shopping",   sub: function () { return "Lists for the store"; } },
     checklists: { title: "Checklists", sub: function () { return "Routines that reset each week"; } },
@@ -377,7 +379,7 @@
   };
 
   function setView(view) {
-    if (view === "habits" && currentView !== "habits") habitScrollX = -1;
+    if (view === "habits" && currentView !== "habits") weekOffset = 0;
     currentView = view;
     document.querySelectorAll(".view").forEach(function (v) { v.hidden = true; });
     $("#view-" + view).hidden = false;
@@ -434,9 +436,9 @@
   }
 
   // -----------------------------------------------------------
-  // Habits & streaks
+  // Weekly task tracker
   // -----------------------------------------------------------
-  function habitDoneOn(h, key) { return !!(h.history && h.history[key]); }
+  var MON_ORDER = [1, 2, 3, 4, 5, 6, 0];   // display order, Monday → Sunday
 
   function addDays(key, n) {
     var p = key.split("-");
@@ -444,190 +446,228 @@
     d.setDate(d.getDate() + n);
     return dateKey(d);
   }
-
-  function currentStreak(h) {
-    // Streak counts consecutive days ending today (if ticked) or yesterday
-    // (today still counts as "not broken yet" until the day ends).
-    var cursor = todayKey();
-    if (!habitDoneOn(h, cursor)) {
-      cursor = addDays(cursor, -1);
-      if (!habitDoneOn(h, cursor)) return 0;
-    }
-    var streak = 0;
-    while (habitDoneOn(h, cursor)) { streak++; cursor = addDays(cursor, -1); }
-    return streak;
+  function keyToDate(key) {
+    var p = key.split("-");
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
   }
 
-  function toggleHabitDay(h, key) {
-    if (!h.history) h.history = {};
-    if (h.history[key]) delete h.history[key];
-    else h.history[key] = true;
+  // The Monday-start key of the week currently on screen.
+  function viewWeekStart() {
+    var d = new Date();
+    d.setDate(d.getDate() + weekOffset * 7);
+    return weekStartKey(d);
+  }
+  function taskDone(t, wk) { return !!(t.done && t.done[wk]); }
+  function toggleTask(t, wk) {
+    if (!t.done) t.done = {};
+    if (t.done[wk]) delete t.done[wk]; else t.done[wk] = true;
     save();
+  }
+  function catLabel(c) { return c === "personal" ? "Personal" : "Work"; }
+  function fmtDur(min) {
+    min = min || 0;
+    var h = Math.floor(min / 60), m = min % 60;
+    if (h && m) return h + "h " + m + "m";
+    if (h) return h + "h";
+    return m + "m";
   }
 
   function renderHabits() {
     var el = $("#view-habits");
+    var wk = viewWeekStart();
+    var tasks = state.tasks;
     var html = "";
-    html += '<button class="btn btn-primary btn-block" data-act="add-habit" style="margin-bottom:14px">+ New habit</button>';
 
-    if (state.habits.length === 0) {
-      html += emptyBox("flame", "No habits yet", "Add one and fill in the grid day by day to build a streak.");
+    // Week switcher
+    var startDate = keyToDate(wk);
+    var endDate = keyToDate(addDays(wk, 6));
+    var range = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+      " – " + endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    var rel = weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : weekOffset === 1 ? "Next week" : null;
+    html += '<div class="habit-monthbar">' +
+      '<button class="month-nav" data-act="week-prev" aria-label="Previous week">' + ic("chevron-left") + "</button>" +
+      '<div class="week-label"><div class="habit-month-label">' + esc(rel || range) + "</div>" +
+        (rel ? '<div class="week-sub">' + esc(range) + "</div>" : "") +
+      "</div>" +
+      '<button class="month-nav" data-act="week-next" aria-label="Next week">' + ic("chevron-right") + "</button>" +
+      "</div>";
+
+    html += '<button class="btn btn-primary btn-block" data-act="add-task" style="margin:12px 0 14px">+ New task</button>';
+
+    if (!tasks.length) {
+      html += emptyBox("bar-chart", "No tasks yet", "Add tasks, give each a day and a rough time, then tick them off through the week.");
       el.innerHTML = html; return;
     }
 
-    var now = new Date();
-    var y = habitYear, m = habitMonthIdx;
-    var dim = new Date(y, m + 1, 0).getDate();          // days in month
-    var isThisMonth = (y === now.getFullYear() && m === now.getMonth());
-    var isFutureMonth = (y > now.getFullYear()) || (y === now.getFullYear() && m > now.getMonth());
-    var elapsed = isFutureMonth ? 0 : (isThisMonth ? now.getDate() : dim);
-    var tk = todayKey();
-    function keyFor(d) { return y + "-" + pad(m + 1) + "-" + pad(d); }
-
-    // Completed check-ins this month (across every habit).
-    var completed = 0;
-    state.habits.forEach(function (h) {
-      for (var d = 1; d <= dim; d++) if (habitDoneOn(h, keyFor(d))) completed++;
+    // Weekly totals
+    var total = tasks.length, doneCount = 0, workMin = 0, persMin = 0;
+    tasks.forEach(function (t) {
+      if (taskDone(t, wk)) doneCount++;
+      if (t.cat === "personal") persMin += t.minutes || 0; else workMin += t.minutes || 0;
     });
-    var possible = state.habits.length * elapsed;
-    var pct = possible ? Math.round((completed / possible) * 1000) / 10 : 0;
-    var monthLabel = new Date(y, m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    var totalMin = workMin + persMin;
+    var pct = total ? Math.round((doneCount / total) * 100) : 0;
 
-    // Month switcher
-    html += '<div class="habit-monthbar">' +
-      '<button class="month-nav" data-act="habit-prev-month" aria-label="Previous month">' + ic("chevron-left") + "</button>" +
-      '<div class="habit-month-label">' + esc(monthLabel) + "</div>" +
-      '<button class="month-nav" data-act="habit-next-month" aria-label="Next month">' + ic("chevron-right") + "</button>" +
-      "</div>";
-
-    // Summary strip
+    // Summary strip + overall progress
     html += '<div class="habit-summary">' +
-      '<div class="hstat"><div class="n">' + state.habits.length + '</div><div class="l">habits</div></div>' +
-      '<div class="hstat"><div class="n">' + completed + '</div><div class="l">check-ins</div></div>' +
-      '<div class="hstat"><div class="n accent">' + pct + '%</div><div class="l">this month</div></div>' +
+      '<div class="hstat"><div class="n">' + doneCount + "/" + total + '</div><div class="l">done</div></div>' +
+      '<div class="hstat"><div class="n">' + fmtDur(totalMin) + '</div><div class="l">planned</div></div>' +
+      '<div class="hstat"><div class="n accent">' + pct + '%</div><div class="l">complete</div></div>' +
       "</div>";
-    html += '<div class="habit-progress"><span style="width:' + pct + '%"></span></div>';
+    html += '<div class="wk-progress"><span style="width:' + pct + '%"></span></div>';
 
-    // The grid: sticky habit column + one column per day of the month.
-    html += '<div class="htrack"><div class="hgrid" style="--days:' + dim + '">';
-
-    // Header row of day numbers
-    html += '<div class="hrow hhead">';
-    html += '<div class="hname hname-head">Habit</div>';
-    for (var d = 1; d <= dim; d++) {
-      var wd = new Date(y, m, d).getDay();
-      var hk = keyFor(d);
-      html += '<div class="hcell hhcell' + (wd === 0 || wd === 6 ? " wknd" : "") + (hk === tk ? " today" : "") + '">' +
-        '<span class="hwd">' + WEEKDAYS_SHORT[wd][0] + '</span>' +
-        '<span class="hdn">' + d + '</span></div>';
+    // Progress by category (completion)
+    var progressRows = catProgressRow("work", tasks, wk) + catProgressRow("personal", tasks, wk);
+    if (progressRows) {
+      html += '<div class="section-label">Progress</div>';
+      html += '<div class="card catcard">' + progressRows + "</div>";
     }
-    html += "</div>";
 
-    // One row per habit
-    html += '<div class="sortable hbody" id="habitSortable">';
-    state.habits.forEach(function (h) {
-      var color = esc(h.color || HABIT_COLORS[0]);
-      var streak = currentStreak(h);
-      html += '<div class="hrow" data-id="' + h.id + '">';
-      html += '<div class="hname">' +
-        '<span class="drag-handle" data-drag aria-label="Reorder">' + ic("grip") + "</span>" +
-        '<button class="hname-btn" data-act="edit-habit" data-id="' + h.id + '">' +
-          '<span class="hname-dot" style="background:' + color + '"></span>' +
-          '<span class="hname-txt">' + esc(h.name) + "</span>" +
-        "</button>" +
-        (streak > 0 ? '<span class="hname-streak">' + ic("flame", "ic-sm") + streak + "</span>" : "") +
-        "</div>";
-      for (var d2 = 1; d2 <= dim; d2++) {
-        var k = keyFor(d2);
-        var on = habitDoneOn(h, k);
-        var future = isFutureMonth || (isThisMonth && d2 > now.getDate());
-        var style = on ? ' style="--hc:' + color + '"' : "";
-        html += '<button class="hcell' + (on ? " on" : "") + (k === tk ? " today" : "") + (future ? " future" : "") + '"' +
-          (future ? " disabled" : "") +
-          ' data-act="toggle-habit-day" data-id="' + h.id + '" data-key="' + k + '"' + style +
-          ' aria-label="' + esc(h.name) + ", " + monthLabel + " " + d2 + '"></button>';
-      }
-      html += "</div>";
+    // Time by day (stacked Work/Personal bars, Monday first)
+    var dayMin = {};
+    MON_ORDER.forEach(function (dow) { dayMin[dow] = { w: 0, p: 0 }; });
+    tasks.forEach(function (t) {
+      var s = dayMin[t.day] || (dayMin[t.day] = { w: 0, p: 0 });
+      if (t.cat === "personal") s.p += t.minutes || 0; else s.w += t.minutes || 0;
     });
-    html += "</div>";   // hbody
-    html += "</div></div>";  // hgrid, htrack
+    var maxDay = 1;
+    MON_ORDER.forEach(function (dow) { maxDay = Math.max(maxDay, dayMin[dow].w + dayMin[dow].p); });
+
+    html += '<div class="section-label">Time by day</div>';
+    html += '<div class="card daybars">';
+    MON_ORDER.forEach(function (dow, idx) {
+      var s = dayMin[dow], tot = s.w + s.p;
+      var isToday = addDays(wk, idx) === todayKey();
+      html += '<div class="daybar' + (isToday ? " today" : "") + '">' +
+        '<span class="daybar-lbl">' + WEEKDAYS_SHORT[dow] + "</span>" +
+        '<div class="daybar-track">' +
+          '<span class="seg work" style="width:' + Math.round((s.w / maxDay) * 100) + '%"></span>' +
+          '<span class="seg personal" style="width:' + Math.round((s.p / maxDay) * 100) + '%"></span>' +
+        "</div>" +
+        '<span class="daybar-val">' + (tot ? fmtDur(tot) : "–") + "</span>" +
+        "</div>";
+    });
+    html += "</div>";
+    html += '<div class="cat-legend">' +
+      '<span class="cat-dot work"></span>Work · ' + fmtDur(workMin) +
+      '<span class="cat-dot personal" style="margin-left:16px"></span>Personal · ' + fmtDur(persMin) +
+      "</div>";
+
+    // Tasks grouped by day (Monday first)
+    html += '<div class="section-label">Tasks</div>';
+    MON_ORDER.forEach(function (dow) {
+      var dayTasks = tasks.filter(function (t) { return t.day === dow; });
+      if (!dayTasks.length) return;
+      dayTasks.sort(function (a, b) { return a.cat === b.cat ? 0 : a.cat === "work" ? -1 : 1; });
+      html += '<div class="day-head">' + WEEKDAYS[dow] + "</div>";
+      html += '<div class="card"><div class="rows">';
+      dayTasks.forEach(function (t) { html += taskRow(t, wk); });
+      html += "</div></div>";
+    });
 
     el.innerHTML = html;
-    makeSortable($("#habitSortable"), state.habits);
-
-    // Keep the horizontal scroll position stable between renders, and
-    // centre on today the first time the grid appears for this month.
-    var track = el.querySelector(".htrack");
-    if (track) {
-      if (habitScrollX < 0) {
-        var todayCell = track.querySelector(".hhead .hcell.today");
-        if (todayCell) {
-          // Centre today in the region NOT covered by the sticky name column,
-          // then clamp so it never scrolls past either edge.
-          var nameCell = track.querySelector(".hname");
-          var nameW = nameCell ? nameCell.offsetWidth : 0;
-          var visible = track.clientWidth - nameW;
-          var target = todayCell.offsetLeft - nameW - Math.max(0, (visible - todayCell.offsetWidth) / 2);
-          var maxScroll = track.scrollWidth - track.clientWidth;
-          track.scrollLeft = Math.max(0, Math.min(target, maxScroll));
-        } else {
-          track.scrollLeft = 0;
-        }
-      } else {
-        track.scrollLeft = habitScrollX;
-      }
-      habitScrollX = track.scrollLeft;
-      track.addEventListener("scroll", function () { habitScrollX = track.scrollLeft; });
-    }
   }
 
-  function shiftHabitMonth(delta) {
-    var d = new Date(habitYear, habitMonthIdx + delta, 1);
-    habitYear = d.getFullYear();
-    habitMonthIdx = d.getMonth();
-    habitScrollX = -1;   // re-centre (on today if it's the current month)
-    render();
+  function catProgressRow(cat, tasks, wk) {
+    var list = tasks.filter(function (t) { return t.cat === cat; });
+    var tot = list.length;
+    if (!tot) return "";
+    var done = list.filter(function (t) { return taskDone(t, wk); }).length;
+    var p = Math.round((done / tot) * 100);
+    return '<div class="catrow">' +
+      '<div class="catrow-top"><span class="cat-dot ' + cat + '"></span>' +
+        '<span class="catrow-name">' + catLabel(cat) + "</span>" +
+        '<span class="catrow-count">' + done + "/" + tot + "</span></div>" +
+      '<div class="wk-progress ' + cat + '"><span style="width:' + p + '%"></span></div>' +
+      "</div>";
   }
 
-  function findHabit(id) { return state.habits.filter(function (h) { return h.id === id; })[0]; }
+  function taskRow(t, wk) {
+    var done = taskDone(t, wk);
+    return '<div class="row task-row ' + (done ? "done" : "") + '" data-id="' + t.id + '">' +
+      '<button class="check ' + (done ? "done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" aria-label="Done"></button>' +
+      '<span class="cat-dot ' + t.cat + '"></span>' +
+      '<div class="row-body">' +
+        '<div class="row-text">' + esc(t.text) + "</div>" +
+        '<div class="row-meta"><span class="pill">' + fmtDur(t.minutes) + "</span>" +
+          '<span class="pill ' + t.cat + '">' + catLabel(t.cat) + "</span></div>" +
+      "</div>" +
+      '<div class="row-actions">' +
+        '<button class="mini-btn" data-act="edit-task" data-id="' + t.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
+        '<button class="mini-btn" data-act="del-task" data-id="' + t.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
+      "</div>" +
+      "</div>";
+  }
 
-  function habitModal(existing) {
-    var h = existing || { name: "", color: HABIT_COLORS[0] };
-    var chosen = h.color || HABIT_COLORS[0];
+  function shiftWeek(delta) { weekOffset += delta; render(); }
+
+  function findTask(id) { return state.tasks.filter(function (t) { return t.id === id; })[0]; }
+
+  function delTask(id) {
+    var t = findTask(id); if (!t) return;
+    confirmModal("Delete task?", "“" + t.text + "” will be removed from your week.", { danger: true, okLabel: "Delete" })
+      .then(function (ok) {
+        if (!ok) return;
+        state.tasks = state.tasks.filter(function (x) { return x.id !== id; });
+        save(); render(); toast("Task deleted");
+      });
+  }
+
+  function taskModal(existing) {
+    var t = existing || { text: "", day: new Date().getDay(), cat: "work", minutes: 30 };
+    var curCat = t.cat === "personal" ? "personal" : "work";
+    var curMin = t.minutes || 0;
+    var hrs = Math.floor(curMin / 60), mins = curMin % 60;
+
+    var dayOpts = MON_ORDER.map(function (dow) {
+      return '<option value="' + dow + '"' + (dow === t.day ? " selected" : "") + ">" + WEEKDAYS[dow] + "</option>";
+    }).join("");
+    var hourOpts = "";
+    for (var hh = 0; hh <= 12; hh++) hourOpts += '<option value="' + hh + '"' + (hh === hrs ? " selected" : "") + ">" + hh + " h</option>";
+    var minOpts = [0, 15, 30, 45].map(function (mm) {
+      return '<option value="' + mm + '"' + (mm === mins ? " selected" : "") + ">" + mm + " m</option>";
+    }).join("");
+
     var body =
-      '<label class="field"><span>Habit name</span>' +
-      '<input type="text" id="hbName" placeholder="e.g. Meditate" value="' + esc(h.name) + '"></label>' +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:8px;font-weight:600">Colour</span>' +
-      '<div class="swatches" id="hbColor">' +
-        HABIT_COLORS.map(function (c) {
-          return '<button type="button" class="swatch ' + (c === chosen ? "is-active" : "") + '" data-c="' + c + '" style="background:' + c + '" aria-label="Colour"></button>';
-        }).join("") +
-      "</div></div>";
+      '<label class="field"><span>Task</span>' +
+      '<input type="text" id="tkText" placeholder="e.g. Deep work block" value="' + esc(t.text) + '"></label>' +
+      '<label class="field"><span>Day of week</span><select id="tkDay">' + dayOpts + "</select></label>" +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Category</span>' +
+        '<div class="seg" id="tkCat">' +
+          '<button type="button" data-c="work" class="' + (curCat === "work" ? "is-active" : "") + '">Work</button>' +
+          '<button type="button" data-c="personal" class="' + (curCat === "personal" ? "is-active" : "") + '">Personal</button>' +
+        "</div></div>" +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">How long it takes</span>' +
+        '<div class="field-row"><select id="tkHours">' + hourOpts + '</select><select id="tkMins">' + minOpts + "</select></div></div>";
+
     var foot = (existing ? '<button class="btn btn-danger" data-x="del">Delete</button>' : "") +
       '<button class="btn btn-ghost" data-x="cancel">Cancel</button>' +
       '<button class="btn btn-primary" data-x="save">Save</button>';
+
     openModal({
-      title: existing ? "Edit habit" : "New habit",
+      title: existing ? "Edit task" : "New task",
       body: body, foot: foot,
       onMount: function (b, f) {
-        b.querySelector("#hbName").focus();
-        b.querySelector("#hbColor").addEventListener("click", function (e) {
+        b.querySelector("#tkText").focus();
+        b.querySelector("#tkCat").addEventListener("click", function (e) {
           var btn = e.target.closest("button[data-c]"); if (!btn) return;
-          chosen = btn.getAttribute("data-c");
-          b.querySelectorAll("#hbColor button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
+          curCat = btn.getAttribute("data-c");
+          b.querySelectorAll("#tkCat button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
         });
         f.querySelector('[data-x="cancel"]').onclick = closeModal;
         if (existing) f.querySelector('[data-x="del"]').onclick = function () {
-          state.habits = state.habits.filter(function (x) { return x.id !== existing.id; });
-          save(); closeModal(); render(); toast("Habit deleted");
+          state.tasks = state.tasks.filter(function (x) { return x.id !== existing.id; });
+          save(); closeModal(); render(); toast("Task deleted");
         };
         f.querySelector('[data-x="save"]').onclick = function () {
-          var name = b.querySelector("#hbName").value.trim();
-          if (!name) { b.querySelector("#hbName").focus(); return; }
-          if (existing) { existing.name = name; existing.color = chosen; }
-          else state.habits.push({ id: uid(), name: name, color: chosen, history: {}, created: Date.now() });
+          var text = b.querySelector("#tkText").value.trim();
+          if (!text) { b.querySelector("#tkText").focus(); return; }
+          var minutes = parseInt(b.querySelector("#tkHours").value, 10) * 60 + parseInt(b.querySelector("#tkMins").value, 10);
+          var day = parseInt(b.querySelector("#tkDay").value, 10);
+          if (existing) { existing.text = text; existing.day = day; existing.cat = curCat; existing.minutes = minutes; }
+          else state.tasks.push({ id: uid(), text: text, day: day, cat: curCat, minutes: minutes, done: {}, created: Date.now() });
           save(); closeModal(); render();
-          toast(existing ? "Habit updated" : "Habit added");
+          toast(existing ? "Task updated" : "Task added");
         };
       }
     });
@@ -651,10 +691,11 @@
     var list = activeList();
     var shopCount = list ? list.items.filter(function (i) { return !i.done; }).length : 0;
     var due = todaysReminders().filter(function (r) { return !r.done; }).length;
-    var habitsLeft = state.habits.filter(function (h) { return !habitDoneOn(h, todayKey()); }).length;
+    var thisWk = weekStartKey();
+    var tasksLeft = state.tasks.filter(function (t) { return !taskDone(t, thisWk); }).length;
     setTabBadge("shopping", shopCount);
     setTabBadge("reminders", due);
-    setTabBadge("habits", habitsLeft);
+    setTabBadge("habits", tasksLeft);
   }
 
   function setTabBadge(view, n) {
@@ -1067,12 +1108,12 @@
   // ---------- WEEKLY REVIEW ----------
   function reviewModal() {
     var wk = weekStartKey();
-    var days = [];
-    for (var i = 0; i < 7; i++) days.push(addDays(wk, i));
-    var tk = todayKey();
 
-    var habitChecks = 0;
-    state.habits.forEach(function (h) { days.forEach(function (d) { if (habitDoneOn(h, d)) habitChecks++; }); });
+    var tasksDone = 0, tasksTotal = state.tasks.length, minsDone = 0;
+    state.tasks.forEach(function (t) {
+      if (taskDone(t, wk)) { tasksDone++; minsDone += t.minutes || 0; }
+    });
+    var taskPct = tasksTotal ? Math.round((tasksDone / tasksTotal) * 100) : 0;
 
     var clDone = 0, clTotal = 0;
     state.checklists.forEach(function (c) { c.items.forEach(function (it) { clTotal++; if (it.done) clDone++; }); });
@@ -1082,9 +1123,6 @@
       return r.kind === "once" && r.done && r.date >= wk && r.date <= addDays(wk, 6);
     }).length;
 
-    var topStreak = 0, topName = "";
-    state.habits.forEach(function (h) { var s = currentStreak(h); if (s > topStreak) { topStreak = s; topName = h.name; } });
-
     var review = state.reviews[wk] || { reflection: "" };
 
     var weekLabel = fmtDate(wk).replace("Today", new Date(wk.split("-")[0], wk.split("-")[1] - 1, wk.split("-")[2]).toLocaleDateString(undefined, { month: "short", day: "numeric" }));
@@ -1093,10 +1131,10 @@
     var body =
       '<p class="rc-sub" style="margin:0 0 12px">Week of ' + esc(weekLabel) + " – " + esc(sunLabel) + "</p>" +
       '<div class="review-stats">' +
-        '<div class="review-stat"><div class="n accent">' + habitChecks + '</div><div class="l">habit check-ins</div></div>' +
+        '<div class="review-stat"><div class="n accent">' + tasksDone + "/" + tasksTotal + '</div><div class="l">tasks done (' + taskPct + '%)</div></div>' +
+        '<div class="review-stat"><div class="n">' + fmtDur(minsDone) + '</div><div class="l">time completed</div></div>' +
         '<div class="review-stat"><div class="n">' + remDone + '</div><div class="l">reminders done</div></div>' +
         '<div class="review-stat"><div class="n">' + clDone + "/" + clTotal + '</div><div class="l">checklist items (' + clPct + '%)</div></div>' +
-        '<div class="review-stat"><div class="n" style="display:flex;align-items:center;gap:6px">' + ic("flame", "ic-lg flame-warn") + topStreak + '</div><div class="l">' + (topName ? "best streak · " + esc(topName) : "best streak") + '</div></div>' +
       "</div>" +
       '<label class="field"><span>Reflection — how did the week go?</span>' +
       '<textarea id="rvText" placeholder="Wins, what to improve, plans for next week…" style="min-height:120px">' + esc(review.reflection || "") + "</textarea></label>";
@@ -1232,13 +1270,13 @@
       case "del-shop": delShop(actEl.getAttribute("data-iid")); break;
       case "clear-done": clearShopDone(); break;
 
-      // Habits
-      case "habit-prev-month": shiftHabitMonth(-1); break;
-      case "habit-next-month": shiftHabitMonth(1); break;
-      case "add-habit": habitModal(null); break;
-      case "edit-habit": habitModal(findHabit(actEl.getAttribute("data-id"))); break;
-      case "del-habit": delHabit(actEl.getAttribute("data-id")); break;
-      case "toggle-habit-day": toggleHabitDay(findHabit(actEl.getAttribute("data-id")), actEl.getAttribute("data-key")); render(); break;
+      // Weekly tracker
+      case "week-prev": shiftWeek(-1); break;
+      case "week-next": shiftWeek(1); break;
+      case "add-task": taskModal(null); break;
+      case "edit-task": taskModal(findTask(actEl.getAttribute("data-id"))); break;
+      case "del-task": delTask(actEl.getAttribute("data-id")); break;
+      case "toggle-task": toggleTask(findTask(actEl.getAttribute("data-id")), viewWeekStart()); render(); break;
 
       // Weekly review
       case "open-review": reviewModal(); break;
@@ -1363,15 +1401,6 @@
       });
   }
 
-  function delHabit(id) {
-    var h = findHabit(id); if (!h) return;
-    confirmModal("Delete habit?", "“" + h.name + "” and its streak history will be removed.", { danger: true, okLabel: "Delete" })
-      .then(function (ok) {
-        if (!ok) return;
-        state.habits = state.habits.filter(function (x) { return x.id !== id; });
-        save(); render(); toast("Habit deleted");
-      });
-  }
 
   // -----------------------------------------------------------
   // Settings modal (theme, notifications, data export/import)

@@ -472,15 +472,20 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 }
 .cat-opt.is-active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
-/* ---------- Habits ---------- */
+/* ---------- Weekly tracker ---------- */
 .habit-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; margin-left: -2px; }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.cat-dot.work { background: #0ea5e9; }
+.cat-dot.personal { background: #8b5cf6; }
 
-/* Month switcher */
+/* Week switcher */
 .habit-monthbar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; margin-bottom: 12px;
+  gap: 8px; margin-bottom: 4px;
 }
+.week-label { text-align: center; min-width: 0; }
 .habit-month-label { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
+.week-sub { font-size: 0.72rem; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
 .month-nav {
   width: 38px; height: 38px; flex: 0 0 auto;
   border: 1px solid var(--line); background: var(--bg-elev); color: var(--text-dim);
@@ -498,102 +503,51 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
   padding: 10px 6px; text-align: center;
 }
-.habit-summary .hstat .n { font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+.habit-summary .hstat .n { font-size: 1.3rem; font-weight: 800; line-height: 1.1; }
 .habit-summary .hstat .n.accent { color: var(--accent); }
-.habit-summary .hstat .l { font-size: 0.68rem; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+.habit-summary .hstat .l { font-size: 0.66rem; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
 
-.habit-progress {
+/* Progress bars */
+.wk-progress {
   height: 8px; border-radius: 999px; background: var(--bg-elev-2);
   overflow: hidden; margin-bottom: 16px;
 }
-.habit-progress > span {
+.wk-progress > span {
   display: block; height: 100%; border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
   transition: width .3s ease;
 }
+.wk-progress.work > span { background: #0ea5e9; }
+.wk-progress.personal > span { background: #8b5cf6; }
 
-/* The single connected grid */
-.htrack {
-  overflow-x: auto; overflow-y: hidden;
-  border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--card);
-  -webkit-overflow-scrolling: touch;
-}
-.hgrid { width: max-content; min-width: 100%; }
-.hrow {
-  display: grid;
-  grid-template-columns: 128px repeat(var(--days), 30px);
-}
-.hrow + .hrow, .hbody .hrow { border-top: 1px solid var(--line-soft); }
+/* Category completion rows */
+.catcard { display: flex; flex-direction: column; gap: 12px; }
+.catrow-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-weight: 700; font-size: 0.9rem; }
+.catrow-count { margin-left: auto; color: var(--text-dim); font-weight: 700; font-size: 0.82rem; }
+.catrow .wk-progress { margin-bottom: 0; }
 
-/* Sticky habit-name column */
-.hname {
-  position: sticky; left: 0; z-index: 3;
-  background: var(--card);
-  border-right: 1px solid var(--line);
-  box-shadow: 6px 0 8px -5px rgba(0, 0, 0, 0.5);
-  display: flex; align-items: center; gap: 4px;
-  padding: 0 6px 0 4px; min-width: 0; height: 44px;
-}
-.hname-head {
-  font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.04em; color: var(--text-faint);
-  padding-left: 10px; height: 40px;
-}
-.hname .drag-handle { flex: 0 0 auto; width: 18px; height: 32px; margin-left: -2px; color: var(--text-faint); cursor: grab; touch-action: none; display: inline-flex; align-items: center; justify-content: center; }
-.hname .drag-handle .ic { width: 15px; height: 15px; }
-.hname-btn {
-  flex: 1; min-width: 0; background: transparent; border: none; cursor: pointer;
-  display: flex; align-items: center; gap: 7px; padding: 4px 0; text-align: left;
-  color: var(--text);
-}
-.hname-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
-.hname-txt {
-  font-weight: 700; font-size: 0.86rem; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; min-width: 0;
-}
-.hname-streak {
-  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px;
-  font-size: 0.72rem; font-weight: 800; color: var(--warn);
-}
+/* Time-by-day bars */
+.daybars { display: flex; flex-direction: column; gap: 9px; }
+.daybar { display: flex; align-items: center; gap: 10px; }
+.daybar-lbl { width: 30px; flex: 0 0 auto; font-size: 0.72rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; }
+.daybar.today .daybar-lbl { color: var(--accent); }
+.daybar-track { flex: 1; height: 14px; border-radius: 7px; background: var(--bg-elev-2); overflow: hidden; display: flex; }
+.daybar-track .seg { height: 100%; transition: width .3s ease; }
+.daybar-track .seg.work { background: #0ea5e9; }
+.daybar-track .seg.personal { background: #8b5cf6; }
+.daybar-val { width: 48px; flex: 0 0 auto; text-align: right; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-/* Day header cells */
-.hhead .hname { height: 40px; }
-.hhcell {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 40px; gap: 1px;
-}
-.hhcell .hwd { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; color: var(--text-faint); }
-.hhcell .hdn { font-size: 0.72rem; font-weight: 700; color: var(--text-dim); }
-.hhcell.wknd { background: var(--bg-elev); }
-.hhcell.today { background: var(--accent-soft); }
-.hhcell.today .hwd { color: var(--accent); }
-.hhcell.today .hdn {
-  color: #fff; background: var(--accent);
-  width: 20px; height: 20px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-}
+/* Work/Personal legend */
+.cat-legend { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-dim); font-weight: 600; margin: 10px 2px 4px; }
 
-/* Day toggle cells */
-.hcell {
-  border: none; background: transparent; cursor: pointer; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  height: 44px;
-}
-.hbody .hcell::before {
-  content: ""; width: 20px; height: 20px; border-radius: 6px;
-  border: 1.5px solid var(--line); background: transparent;
-  transition: transform .1s;
-}
-.hbody .hcell.on::before {
-  border-color: var(--hc, var(--accent));
-  background: var(--hc, var(--accent));   /* --hc set inline per habit */
-}
-.hbody .hcell.on { background: var(--accent-soft); }
-.hbody .hcell.today { background: var(--accent-soft); }
-.hbody .hcell.future { cursor: default; }
-.hbody .hcell.future::before { opacity: 0.35; }
-.hbody .hcell:not(.future):active::before { transform: scale(0.82); }
+/* Day headings in the task list */
+.day-head { font-size: 0.82rem; font-weight: 800; margin: 16px 2px 6px; letter-spacing: -0.01em; }
+
+/* Task rows (reuse .row / .check / .pill) */
+.task-row .cat-dot { margin: 0 2px; }
+.task-row.done .row-text { text-decoration: line-through; color: var(--text-faint); }
+.pill.work { background: rgba(14,165,233,0.16); color: #38bdf8; }
+.pill.personal { background: rgba(139,92,246,0.18); color: #a78bfa; }
 
 /* ---------- Weekly review ---------- */
 .review-card {
