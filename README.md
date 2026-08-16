@@ -11,12 +11,13 @@ sending reminder notifications.
 
 ## What's inside
 
-- **Week** — a **weekly task + time tracker** (the home screen). Add tasks,
-  assign each a **day of the week**, a **category** (Work or Personal) and a
-  rough **duration**, then tick them off. See weekly completion **progress
-  bars** overall and per category, plus a **time-by-day** breakdown showing how
-  many hours each day is taken up by Work vs Personal. Flip between weeks with
-  the arrows.
+- **Week** — a **weekly task + time tracker** (the home screen). Add tasks and
+  pick **which days they repeat** (one or several) — every task recurs **every
+  week**, ticked off per day. Give each a **category** (Work, Personal or
+  School) and a rough **duration**. See weekly completion **progress bars**
+  overall and per category, plus a **time-by-day** breakdown showing how many
+  hours each day is taken up by Work vs Personal vs School. Flip between weeks
+  with the arrows.
 - **Reminders** — set a **notification** for anything you shouldn't forget:
   one-off reminders for a specific day (pick up milk after work, a dentist
   appointment) *and* **weekly** recurring reminders (bin night, gym, call

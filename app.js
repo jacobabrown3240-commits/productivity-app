@@ -110,12 +110,12 @@
         }
       ],
       tasks: [
-        { id: uid(), text: "Deep work block", day: 1, cat: "work", minutes: 120, done: {}, created: Date.now() },
-        { id: uid(), text: "Emails & admin", day: 1, cat: "work", minutes: 45, done: {}, created: Date.now() },
-        { id: uid(), text: "Gym / workout", day: 2, cat: "personal", minutes: 60, done: {}, created: Date.now() },
-        { id: uid(), text: "Team meeting", day: 3, cat: "work", minutes: 60, done: {}, created: Date.now() },
-        { id: uid(), text: "Grocery shopping", day: 6, cat: "personal", minutes: 45, done: {}, created: Date.now() },
-        { id: uid(), text: "Plan next week", day: 0, cat: "work", minutes: 30, done: {}, created: Date.now() }
+        { id: uid(), text: "Deep work block", days: [1, 3, 5], cat: "work", minutes: 120, done: {}, created: Date.now() },
+        { id: uid(), text: "Emails & admin", days: [1, 2, 3, 4, 5], cat: "work", minutes: 30, done: {}, created: Date.now() },
+        { id: uid(), text: "Lecture / class", days: [1, 3], cat: "school", minutes: 90, done: {}, created: Date.now() },
+        { id: uid(), text: "Study session", days: [2, 4], cat: "school", minutes: 60, done: {}, created: Date.now() },
+        { id: uid(), text: "Gym / workout", days: [2, 4, 6], cat: "personal", minutes: 60, done: {}, created: Date.now() },
+        { id: uid(), text: "Grocery shopping", days: [6], cat: "personal", minutes: 45, done: {}, created: Date.now() }
       ],
       reviews: {},
       notes: [
@@ -152,8 +152,9 @@
       });
       s.tasks.forEach(function (t) {
         if (!t.done || typeof t.done !== "object") t.done = {};
-        if (typeof t.day !== "number") t.day = 1;
-        if (t.cat !== "personal") t.cat = "work";
+        if (!Array.isArray(t.days)) t.days = typeof t.day === "number" ? [t.day] : [1];
+        delete t.day;
+        if (["work", "personal", "school"].indexOf(t.cat) < 0) t.cat = "work";
         if (typeof t.minutes !== "number") t.minutes = 30;
       });
       delete s.habits;
@@ -457,13 +458,24 @@
     d.setDate(d.getDate() + weekOffset * 7);
     return weekStartKey(d);
   }
-  function taskDone(t, wk) { return !!(t.done && t.done[wk]); }
-  function toggleTask(t, wk) {
+  var CATS = ["work", "personal", "school"];
+  function catLabel(c) { return c === "personal" ? "Personal" : c === "school" ? "School" : "Work"; }
+  function normCat(c) { return CATS.indexOf(c) >= 0 ? c : "work"; }
+
+  // A task can be assigned to several weekdays; completion is tracked per
+  // actual date, so the same task repeats every week and each day is its own
+  // tick. `taskDays` also tolerates the older single-`day` shape.
+  function taskDays(t) {
+    if (t.days && t.days.length) return t.days;
+    return typeof t.day === "number" ? [t.day] : [];
+  }
+  function dateOfDay(wk, dow) { return addDays(wk, MON_ORDER.indexOf(dow)); }
+  function taskDoneOn(t, dk) { return !!(t.done && t.done[dk]); }
+  function toggleTaskOn(t, dk) {
     if (!t.done) t.done = {};
-    if (t.done[wk]) delete t.done[wk]; else t.done[wk] = true;
+    if (t.done[dk]) delete t.done[dk]; else t.done[dk] = true;
     save();
   }
-  function catLabel(c) { return c === "personal" ? "Personal" : "Work"; }
   function fmtDur(min) {
     min = min || 0;
     var h = Math.floor(min / 60), m = min % 60;
@@ -495,17 +507,30 @@
     html += '<button class="btn btn-primary btn-block" data-act="add-task" style="margin:12px 0 14px">+ New task</button>';
 
     if (!tasks.length) {
-      html += emptyBox("bar-chart", "No tasks yet", "Add tasks, give each a day and a rough time, then tick them off through the week.");
+      html += emptyBox("bar-chart", "No tasks yet", "Add tasks, pick the days they repeat and a rough time, then tick them off through the week.");
       el.innerHTML = html; return;
     }
 
-    // Weekly totals
-    var total = tasks.length, doneCount = 0, workMin = 0, persMin = 0;
+    // Every task-day this week is one "occurrence" you can tick off.
+    var occ = [];
     tasks.forEach(function (t) {
-      if (taskDone(t, wk)) doneCount++;
-      if (t.cat === "personal") persMin += t.minutes || 0; else workMin += t.minutes || 0;
+      taskDays(t).forEach(function (dow) {
+        var dk = dateOfDay(wk, dow);
+        occ.push({ t: t, dow: dow, dk: dk, done: taskDoneOn(t, dk) });
+      });
     });
-    var totalMin = workMin + persMin;
+
+    var total = occ.length, doneCount = 0;
+    var catMin = { work: 0, personal: 0, school: 0 };
+    var dayMin = {};
+    MON_ORDER.forEach(function (dow) { dayMin[dow] = { work: 0, personal: 0, school: 0 }; });
+    occ.forEach(function (o) {
+      if (o.done) doneCount++;
+      var c = normCat(o.t.cat), m = o.t.minutes || 0;
+      catMin[c] += m;
+      dayMin[o.dow][c] += m;
+    });
+    var totalMin = catMin.work + catMin.personal + catMin.school;
     var pct = total ? Math.round((doneCount / total) * 100) : 0;
 
     // Summary strip + overall progress
@@ -517,62 +542,59 @@
     html += '<div class="wk-progress"><span style="width:' + pct + '%"></span></div>';
 
     // Progress by category (completion)
-    var progressRows = catProgressRow("work", tasks, wk) + catProgressRow("personal", tasks, wk);
+    var progressRows = "";
+    CATS.forEach(function (c) { progressRows += catProgressRow(c, occ); });
     if (progressRows) {
       html += '<div class="section-label">Progress</div>';
       html += '<div class="card catcard">' + progressRows + "</div>";
     }
 
-    // Time by day (stacked Work/Personal bars, Monday first)
-    var dayMin = {};
-    MON_ORDER.forEach(function (dow) { dayMin[dow] = { w: 0, p: 0 }; });
-    tasks.forEach(function (t) {
-      var s = dayMin[t.day] || (dayMin[t.day] = { w: 0, p: 0 });
-      if (t.cat === "personal") s.p += t.minutes || 0; else s.w += t.minutes || 0;
-    });
+    // Time by day (stacked bars, Monday first)
     var maxDay = 1;
-    MON_ORDER.forEach(function (dow) { maxDay = Math.max(maxDay, dayMin[dow].w + dayMin[dow].p); });
+    MON_ORDER.forEach(function (dow) { var s = dayMin[dow]; maxDay = Math.max(maxDay, s.work + s.personal + s.school); });
 
     html += '<div class="section-label">Time by day</div>';
     html += '<div class="card daybars">';
     MON_ORDER.forEach(function (dow, idx) {
-      var s = dayMin[dow], tot = s.w + s.p;
+      var s = dayMin[dow], tot = s.work + s.personal + s.school;
       var isToday = addDays(wk, idx) === todayKey();
       html += '<div class="daybar' + (isToday ? " today" : "") + '">' +
         '<span class="daybar-lbl">' + WEEKDAYS_SHORT[dow] + "</span>" +
         '<div class="daybar-track">' +
-          '<span class="seg work" style="width:' + Math.round((s.w / maxDay) * 100) + '%"></span>' +
-          '<span class="seg personal" style="width:' + Math.round((s.p / maxDay) * 100) + '%"></span>' +
+          '<span class="seg work" style="width:' + Math.round((s.work / maxDay) * 100) + '%"></span>' +
+          '<span class="seg personal" style="width:' + Math.round((s.personal / maxDay) * 100) + '%"></span>' +
+          '<span class="seg school" style="width:' + Math.round((s.school / maxDay) * 100) + '%"></span>' +
         "</div>" +
         '<span class="daybar-val">' + (tot ? fmtDur(tot) : "–") + "</span>" +
         "</div>";
     });
     html += "</div>";
     html += '<div class="cat-legend">' +
-      '<span class="cat-dot work"></span>Work · ' + fmtDur(workMin) +
-      '<span class="cat-dot personal" style="margin-left:16px"></span>Personal · ' + fmtDur(persMin) +
+      '<span class="cat-dot work"></span>Work · ' + fmtDur(catMin.work) +
+      '<span class="cat-dot personal"></span>Personal · ' + fmtDur(catMin.personal) +
+      '<span class="cat-dot school"></span>School · ' + fmtDur(catMin.school) +
       "</div>";
 
-    // Tasks grouped by day (Monday first)
+    // Tasks grouped by day (Monday first); a repeating task shows on each day.
     html += '<div class="section-label">Tasks</div>';
     MON_ORDER.forEach(function (dow) {
-      var dayTasks = tasks.filter(function (t) { return t.day === dow; });
-      if (!dayTasks.length) return;
-      dayTasks.sort(function (a, b) { return a.cat === b.cat ? 0 : a.cat === "work" ? -1 : 1; });
+      var dayOcc = occ.filter(function (o) { return o.dow === dow; });
+      if (!dayOcc.length) return;
+      dayOcc.sort(function (a, b) { return CATS.indexOf(normCat(a.t.cat)) - CATS.indexOf(normCat(b.t.cat)); });
       html += '<div class="day-head">' + WEEKDAYS[dow] + "</div>";
       html += '<div class="card"><div class="rows">';
-      dayTasks.forEach(function (t) { html += taskRow(t, wk); });
+      dayOcc.forEach(function (o) { html += taskRow(o.t, o.dk, o.done); });
       html += "</div></div>";
     });
 
     el.innerHTML = html;
   }
 
-  function catProgressRow(cat, tasks, wk) {
-    var list = tasks.filter(function (t) { return t.cat === cat; });
+  function catProgressRow(cat, occ) {
+    var list = occ.filter(function (o) { return normCat(o.t.cat) === cat; });
     var tot = list.length;
     if (!tot) return "";
-    var done = list.filter(function (t) { return taskDone(t, wk); }).length;
+    var done = list.filter(function (o) { return o.done; }).length;
     var p = Math.round((done / tot) * 100);
     return '<div class="catrow">' +
       '<div class="catrow-top"><span class="cat-dot ' + cat + '"></span>' +
@@ -582,15 +604,18 @@
       "</div>";
   }
 
-  function taskRow(t, wk) {
-    var done = taskDone(t, wk);
+  function taskRow(t, dk, done) {
+    var cat = normCat(t.cat);
+    var repeats = taskDays(t).length > 1;
     return '<div class="row task-row ' + (done ? "done" : "") + '" data-id="' + t.id + '">' +
-      '<button class="check ' + (done ? "done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" aria-label="Done"></button>' +
-      '<span class="cat-dot ' + t.cat + '"></span>' +
+      '<button class="check ' + (done ? "done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" data-date="' + dk + '" aria-label="Done"></button>' +
+      '<span class="cat-dot ' + cat + '"></span>' +
       '<div class="row-body">' +
         '<div class="row-text">' + esc(t.text) + "</div>" +
         '<div class="row-meta"><span class="pill">' + fmtDur(t.minutes) + "</span>" +
-          '<span class="pill ' + t.cat + '">' + catLabel(t.cat) + "</span></div>" +
+          '<span class="pill ' + cat + '">' + catLabel(cat) + "</span>" +
+          (repeats ? '<span class="pill">' + ic("repeat", "ic-sm") + " " + taskDays(t).length + "×</span>" : "") +
+        "</div>" +
       "</div>" +
       '<div class="row-actions">' +
         '<button class="mini-btn" data-act="edit-task" data-id="' + t.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
@@ -614,29 +639,33 @@
   }
 
   function taskModal(existing) {
-    var t = existing || { text: "", day: new Date().getDay(), cat: "work", minutes: 30 };
-    var curCat = t.cat === "personal" ? "personal" : "work";
+    var t = existing || { text: "", days: [new Date().getDay()], cat: "work", minutes: 30 };
+    var curCat = normCat(t.cat);
+    var chosenDays = taskDays(t).slice();
+    if (!chosenDays.length) chosenDays = [new Date().getDay()];
     var curMin = t.minutes || 0;
     var hrs = Math.floor(curMin / 60), mins = curMin % 60;
 
-    var dayOpts = MON_ORDER.map(function (dow) {
-      return '<option value="' + dow + '"' + (dow === t.day ? " selected" : "") + ">" + WEEKDAYS[dow] + "</option>";
+    var dayChips = MON_ORDER.map(function (dow) {
+      return '<button type="button" class="day-chip' + (chosenDays.indexOf(dow) >= 0 ? " on" : "") + '" data-d="' + dow + '">' +
+        WEEKDAYS_SHORT[dow].slice(0, 2) + "</button>";
     }).join("");
     var hourOpts = "";
     for (var hh = 0; hh <= 12; hh++) hourOpts += '<option value="' + hh + '"' + (hh === hrs ? " selected" : "") + ">" + hh + " h</option>";
     var minOpts = [0, 15, 30, 45].map(function (mm) {
       return '<option value="' + mm + '"' + (mm === mins ? " selected" : "") + ">" + mm + " m</option>";
     }).join("");
+    var catBtns = CATS.map(function (c) {
+      return '<button type="button" data-c="' + c + '" class="' + (curCat === c ? "is-active" : "") + '">' + catLabel(c) + "</button>";
+    }).join("");
 
     var body =
       '<label class="field"><span>Task</span>' +
       '<input type="text" id="tkText" placeholder="e.g. Deep work block" value="' + esc(t.text) + '"></label>' +
-      '<label class="field"><span>Day of week</span><select id="tkDay">' + dayOpts + "</select></label>" +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Days &middot; repeats every week</span>' +
+        '<div class="day-pick" id="tkDays">' + dayChips + "</div></div>" +
       '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Category</span>' +
-        '<div class="seg" id="tkCat">' +
-          '<button type="button" data-c="work" class="' + (curCat === "work" ? "is-active" : "") + '">Work</button>' +
-          '<button type="button" data-c="personal" class="' + (curCat === "personal" ? "is-active" : "") + '">Personal</button>' +
-        "</div></div>" +
+        '<div class="seg seg-3" id="tkCat">' + catBtns + "</div></div>" +
       '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">How long it takes</span>' +
         '<div class="field-row"><select id="tkHours">' + hourOpts + '</select><select id="tkMins">' + minOpts + "</select></div></div>";
 
@@ -654,6 +683,13 @@
           curCat = btn.getAttribute("data-c");
           b.querySelectorAll("#tkCat button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
         });
+        b.querySelector("#tkDays").addEventListener("click", function (e) {
+          var btn = e.target.closest("button[data-d]"); if (!btn) return;
+          var d = parseInt(btn.getAttribute("data-d"), 10);
+          var i = chosenDays.indexOf(d);
+          if (i >= 0) chosenDays.splice(i, 1); else chosenDays.push(d);
+          btn.classList.toggle("on");
+        });
         f.querySelector('[data-x="cancel"]').onclick = closeModal;
         if (existing) f.querySelector('[data-x="del"]').onclick = function () {
           state.tasks = state.tasks.filter(function (x) { return x.id !== existing.id; });
@@ -662,10 +698,15 @@
         f.querySelector('[data-x="save"]').onclick = function () {
           var text = b.querySelector("#tkText").value.trim();
           if (!text) { b.querySelector("#tkText").focus(); return; }
+          if (!chosenDays.length) { toast("Pick at least one day"); return; }
+          var days = MON_ORDER.filter(function (d) { return chosenDays.indexOf(d) >= 0; });
           var minutes = parseInt(b.querySelector("#tkHours").value, 10) * 60 + parseInt(b.querySelector("#tkMins").value, 10);
-          var day = parseInt(b.querySelector("#tkDay").value, 10);
-          if (existing) { existing.text = text; existing.day = day; existing.cat = curCat; existing.minutes = minutes; }
-          else state.tasks.push({ id: uid(), text: text, day: day, cat: curCat, minutes: minutes, done: {}, created: Date.now() });
+          if (existing) {
+            existing.text = text; existing.days = days; existing.cat = curCat; existing.minutes = minutes;
+            delete existing.day;
+          } else {
+            state.tasks.push({ id: uid(), text: text, days: days, cat: curCat, minutes: minutes, done: {}, created: Date.now() });
+          }
           save(); closeModal(); render();
           toast(existing ? "Task updated" : "Task added");
         };
@@ -692,7 +733,10 @@
     var shopCount = list ? list.items.filter(function (i) { return !i.done; }).length : 0;
     var due = todaysReminders().filter(function (r) { return !r.done; }).length;
     var thisWk = weekStartKey();
-    var tasksLeft = state.tasks.filter(function (t) { return !taskDone(t, thisWk); }).length;
+    var tasksLeft = 0;
+    state.tasks.forEach(function (t) {
+      taskDays(t).forEach(function (dow) { if (!taskDoneOn(t, dateOfDay(thisWk, dow))) tasksLeft++; });
+    });
     setTabBadge("shopping", shopCount);
     setTabBadge("reminders", due);
     setTabBadge("habits", tasksLeft);
@@ -1109,9 +1153,12 @@
   function reviewModal() {
     var wk = weekStartKey();
 
-    var tasksDone = 0, tasksTotal = state.tasks.length, minsDone = 0;
+    var tasksDone = 0, tasksTotal = 0, minsDone = 0;
     state.tasks.forEach(function (t) {
-      if (taskDone(t, wk)) { tasksDone++; minsDone += t.minutes || 0; }
+      taskDays(t).forEach(function (dow) {
+        tasksTotal++;
+        if (taskDoneOn(t, dateOfDay(wk, dow))) { tasksDone++; minsDone += t.minutes || 0; }
+      });
     });
     var taskPct = tasksTotal ? Math.round((tasksDone / tasksTotal) * 100) : 0;
 
@@ -1276,7 +1323,7 @@
       case "add-task": taskModal(null); break;
       case "edit-task": taskModal(findTask(actEl.getAttribute("data-id"))); break;
       case "del-task": delTask(actEl.getAttribute("data-id")); break;
-      case "toggle-task": toggleTask(findTask(actEl.getAttribute("data-id")), viewWeekStart()); render(); break;
+      case "toggle-task": toggleTaskOn(findTask(actEl.getAttribute("data-id")), actEl.getAttribute("data-date")); render(); break;
 
       // Weekly review
       case "open-review": reviewModal(); break;

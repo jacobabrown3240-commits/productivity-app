@@ -477,6 +477,7 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 .cat-dot.work { background: #0ea5e9; }
 .cat-dot.personal { background: #8b5cf6; }
+.cat-dot.school { background: #f59e0b; }
 
 /* Week switcher */
 .habit-monthbar {
@@ -519,6 +520,7 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 }
 .wk-progress.work > span { background: #0ea5e9; }
 .wk-progress.personal > span { background: #8b5cf6; }
+.wk-progress.school > span { background: #f59e0b; }
 
 /* Category completion rows */
 .catcard { display: flex; flex-direction: column; gap: 12px; }
@@ -535,10 +537,13 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .daybar-track .seg { height: 100%; transition: width .3s ease; }
 .daybar-track .seg.work { background: #0ea5e9; }
 .daybar-track .seg.personal { background: #8b5cf6; }
+.daybar-track .seg.school { background: #f59e0b; }
 .daybar-val { width: 48px; flex: 0 0 auto; text-align: right; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-/* Work/Personal legend */
-.cat-legend { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-dim); font-weight: 600; margin: 10px 2px 4px; }
+/* Category legend */
+.cat-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; font-size: 0.76rem; color: var(--text-dim); font-weight: 600; margin: 10px 2px 4px; }
+.cat-legend .cat-dot { margin-left: 8px; }
+.cat-legend .cat-dot:first-child { margin-left: 0; }
 
 /* Day headings in the task list */
 .day-head { font-size: 0.82rem; font-weight: 800; margin: 16px 2px 6px; letter-spacing: -0.01em; }
@@ -548,6 +553,18 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .task-row.done .row-text { text-decoration: line-through; color: var(--text-faint); }
 .pill.work { background: rgba(14,165,233,0.16); color: #38bdf8; }
 .pill.personal { background: rgba(139,92,246,0.18); color: #a78bfa; }
+.pill.school { background: rgba(245,158,11,0.18); color: #fbbf24; }
+
+/* Multi-day picker (in the task modal) */
+.day-pick { display: flex; gap: 6px; }
+.day-chip {
+  flex: 1; min-width: 0; padding: 9px 0; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-elev); color: var(--text-dim);
+  font-size: 0.78rem; font-weight: 700; cursor: pointer; text-align: center;
+}
+.day-chip.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.day-chip:active { transform: scale(0.94); }
+.seg-3 button { font-size: 0.8rem; padding: 8px 4px; }
 
 /* ---------- Weekly review ---------- */
 .review-card {
