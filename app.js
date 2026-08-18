@@ -494,6 +494,72 @@
     if (h) return h + "h";
     return m + "m";
   }
+  function minToHM(min) { return pad(Math.floor(min / 60)) + ":" + pad(min % 60); }
+
+  // Pull "weekday … start-time … end-time" triples out of pasted schedule text
+  // (tolerant of the messy layout you get copying a shift app). Returns a list
+  // of { dow, start, end, minutes }, one shift per day.
+  function parseShifts(text) {
+    var dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+    var re = /([a-z]{3,})|(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi;
+    var out = [], curDay = null, pending = [], m;
+    while ((m = re.exec(text)) !== null) {
+      if (m[1]) {
+        var w = m[1].slice(0, 3).toLowerCase();
+        if (dayMap.hasOwnProperty(w)) { curDay = dayMap[w]; pending = []; }
+      } else if (m[4]) {
+        if (curDay === null) continue;
+        var hh = parseInt(m[2], 10), mm = m[3] ? parseInt(m[3], 10) : 0;
+        var pm = m[4].toLowerCase().charAt(0) === "p";
+        if (pm && hh !== 12) hh += 12;
+        if (!pm && hh === 12) hh = 0;
+        pending.push(hh * 60 + mm);
+        if (pending.length === 2) {
+          var mins = pending[1] - pending[0]; if (mins <= 0) mins += 1440;
+          out.push({ dow: curDay, start: pending[0], end: pending[1], minutes: mins });
+          curDay = null; pending = [];
+        }
+      }
+    }
+    return out;
+  }
+
+  function importShiftsModal() {
+    var wk = viewWeekStart();
+    var startDate = keyToDate(wk), endDate = keyToDate(addDays(wk, 6));
+    var range = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+      " – " + endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    var body =
+      '<p class="rc-sub" style="margin:0 0 10px">Paste your shifts below (or the whole schedule screenshot text). ' +
+      'They’ll be added as Work blocks to the week you’re viewing — <b>' + esc(range) + '</b> — and won’t repeat.</p>' +
+      '<textarea id="impText" placeholder="Monday 10:00 am 8:00 pm\nTuesday 10:00 am 8:00 pm\nWednesday 10:00 am 4:00 pm\nThursday 9:00 am 4:00 pm\nFriday 9:00 am 4:00 pm" style="min-height:150px"></textarea>' +
+      '<p class="hint">One shift per day. Re-importing replaces the shifts already imported for this week.</p>';
+    openModal({
+      title: "Import work shifts",
+      body: body,
+      foot: '<button class="btn btn-ghost" data-x="cancel">Cancel</button><button class="btn btn-primary" data-x="add">Add shifts</button>',
+      onMount: function (b, f) {
+        b.querySelector("#impText").focus();
+        f.querySelector('[data-x="cancel"]').onclick = closeModal;
+        f.querySelector('[data-x="add"]').onclick = function () {
+          var shifts = parseShifts(b.querySelector("#impText").value);
+          if (!shifts.length) { toast("No shifts found — check the format"); return; }
+          // Replace any previously-imported shifts for this week.
+          state.tasks = state.tasks.filter(function (t) { return !(t.imported && t.week === wk); });
+          shifts.forEach(function (s) {
+            state.tasks.push({
+              id: uid(),
+              text: "Work " + fmtTime(minToHM(s.start)) + "–" + fmtTime(minToHM(s.end)),
+              days: [s.dow], cat: "work", minutes: s.minutes,
+              week: wk, imported: true, done: {}, created: Date.now()
+            });
+          });
+          save(); closeModal(); render();
+          toast("Added " + shifts.length + " shift" + (shifts.length === 1 ? "" : "s"));
+        };
+      }
+    });
+  }
 
   function renderHabits() {
     var el = $("#view-habits");
@@ -515,16 +581,22 @@
       '<button class="month-nav" data-act="week-next" aria-label="Next week">' + ic("chevron-right") + "</button>" +
       "</div>";
 
-    html += '<button class="btn btn-primary btn-block" data-act="add-task" style="margin:12px 0 14px">+ New task</button>';
+    html += '<div class="wk-actions">' +
+      '<button class="btn btn-primary" data-act="add-task">+ New task</button>' +
+      '<button class="btn btn-ghost" data-act="import-shifts">' + ic("download", "ic-sm") + " Import shifts</button>" +
+      "</div>";
 
     if (!tasks.length) {
       html += emptyBox("bar-chart", "No tasks yet", "Add tasks, pick the days they repeat and a rough time, then tick them off through the week.");
       el.innerHTML = html; return;
     }
 
-    // Every task-day this week is one "occurrence" you can tick off.
+    // Every task-day this week is one "occurrence" you can tick off. A task
+    // pinned to a single week (t.week, e.g. imported work shifts) only shows up
+    // in that week; everything else repeats every week.
     var occ = [];
     tasks.forEach(function (t) {
+      if (t.week && t.week !== wk) return;
       taskDays(t).forEach(function (dow) {
         var dk = dateOfDay(wk, dow);
         occ.push({ t: t, dow: dow, dk: dk, done: taskDoneOn(t, dk) });
@@ -758,6 +830,7 @@
     var thisWk = weekStartKey();
     var tasksLeft = 0;
     state.tasks.forEach(function (t) {
+      if (t.week && t.week !== thisWk) return;
       taskDays(t).forEach(function (dow) { if (!taskDoneOn(t, dateOfDay(thisWk, dow))) tasksLeft++; });
     });
     setTabBadge("shopping", shopCount);
@@ -1178,6 +1251,7 @@
 
     var tasksDone = 0, tasksTotal = 0, minsDone = 0;
     state.tasks.forEach(function (t) {
+      if (t.week && t.week !== wk) return;
       taskDays(t).forEach(function (dow) {
         tasksTotal++;
         if (taskDoneOn(t, dateOfDay(wk, dow))) { tasksDone++; minsDone += t.minutes || 0; }
@@ -1344,6 +1418,7 @@
       case "week-prev": shiftWeek(-1); break;
       case "week-next": shiftWeek(1); break;
       case "add-task": taskModal(null); break;
+      case "import-shifts": importShiftsModal(); break;
       case "edit-task": taskModal(findTask(actEl.getAttribute("data-id"))); break;
       case "del-task": delTask(actEl.getAttribute("data-id")); break;
       case "toggle-task": toggleTaskOn(findTask(actEl.getAttribute("data-id")), actEl.getAttribute("data-date")); render(); break;

@@ -488,6 +488,8 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .week-label { text-align: center; min-width: 0; }
 .habit-month-label { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
 .week-sub { font-size: 0.72rem; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+.wk-actions { display: flex; gap: 8px; margin: 12px 0 14px; }
+.wk-actions .btn { flex: 1; }
 .month-nav {
   width: 38px; height: 38px; flex: 0 0 auto;
   border: 1px solid var(--line); background: var(--bg-elev); color: var(--text-dim);
