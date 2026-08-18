@@ -17,9 +17,11 @@ sending reminder notifications.
   School) and a rough **duration**. Tasks show up as **colored time blocks**
   (sized by how long they take, ADHD-planner style) grouped under each day —
   tap a block to complete it. See weekly completion **progress bars** overall
-  and per category, plus a **time-by-day** breakdown showing how many hours
-  each day is taken up by Work vs Personal vs School. Flip between weeks with
-  the arrows.
+  and per category, plus a **time-by-day** breakdown: each bar is your whole
+  **waking day**, so the filled part shows the chunk that's taken and the empty
+  part is free time. Set your **wake/bedtime in Settings** (default 8:30am–1am)
+  to size the day; the legend totals Work, Personal, School and **Free** hours
+  for the week. Flip between weeks with the arrows.
 - **Reminders** — set a **notification** for anything you shouldn't forget:
   one-off reminders for a specific day (pick up milk after work, a dentist
   appointment) *and* **weekly** recurring reminders (bin night, gym, call

@@ -127,7 +127,7 @@
           updated: Date.now()
         }
       ],
-      settings: { theme: "dark" }
+      settings: { theme: "dark", wakeTime: "08:30", sleepTime: "01:00" }
     };
   }
 
@@ -144,6 +144,8 @@
       if (!s.tasks) s.tasks = [];
       if (!s.reviews) s.reviews = {};
       if (!s.settings) s.settings = { theme: "dark" };
+      if (!s.settings.wakeTime) s.settings.wakeTime = "08:30";
+      if (!s.settings.sleepTime) s.settings.sleepTime = "01:00";
       // backfill new per-item fields
       s.lists.forEach(function (l) {
         (l.items || []).forEach(function (it) {
@@ -471,6 +473,14 @@
     return typeof t.day === "number" ? [t.day] : [];
   }
   function dateOfDay(wk, dow) { return addDays(wk, MON_ORDER.indexOf(dow)); }
+  function parseHM(hm) { var p = (hm || "0:0").split(":"); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
+  // Minutes you're awake each day (bedtime − wake, wrapping past midnight).
+  function wakingMinutes() {
+    var wake = parseHM(state.settings.wakeTime || "08:30");
+    var sleep = parseHM(state.settings.sleepTime || "01:00");
+    if (sleep <= wake) sleep += 1440;
+    return sleep - wake;
+  }
   function taskDoneOn(t, dk) { return !!(t.done && t.done[dk]); }
   function toggleTaskOn(t, dk) {
     if (!t.done) t.done = {};
@@ -550,30 +560,34 @@
       html += '<div class="card catcard">' + progressRows + "</div>";
     }
 
-    // Time by day (stacked bars, Monday first)
-    var maxDay = 1;
-    MON_ORDER.forEach(function (dow) { var s = dayMin[dow]; maxDay = Math.max(maxDay, s.work + s.personal + s.school); });
-
+    // Time by day — each bar is your whole waking day; filled = taken,
+    // empty = free. Scaled to how long you're awake (asleep window excluded).
+    var wake = wakingMinutes();
     html += '<div class="section-label">Time by day</div>';
+    html += '<div class="daybars-cap">Each bar is your ' + fmtDur(wake) + ' awake · asleep ' +
+      fmtTime(state.settings.sleepTime) + " – " + fmtTime(state.settings.wakeTime) + "</div>";
     html += '<div class="card daybars">';
     MON_ORDER.forEach(function (dow, idx) {
       var s = dayMin[dow], tot = s.work + s.personal + s.school;
       var isToday = addDays(wk, idx) === todayKey();
+      var over = tot > wake;
       html += '<div class="daybar' + (isToday ? " today" : "") + '">' +
         '<span class="daybar-lbl">' + WEEKDAYS_SHORT[dow] + "</span>" +
-        '<div class="daybar-track">' +
-          '<span class="seg work" style="width:' + Math.round((s.work / maxDay) * 100) + '%"></span>' +
-          '<span class="seg personal" style="width:' + Math.round((s.personal / maxDay) * 100) + '%"></span>' +
-          '<span class="seg school" style="width:' + Math.round((s.school / maxDay) * 100) + '%"></span>' +
+        '<div class="daybar-track" title="' + Math.round((tot / wake) * 100) + '% of your day">' +
+          '<span class="seg work" style="width:' + (s.work / wake) * 100 + '%"></span>' +
+          '<span class="seg personal" style="width:' + (s.personal / wake) * 100 + '%"></span>' +
+          '<span class="seg school" style="width:' + (s.school / wake) * 100 + '%"></span>' +
         "</div>" +
-        '<span class="daybar-val">' + (tot ? fmtDur(tot) : "–") + "</span>" +
+        '<span class="daybar-val' + (over ? " over" : "") + '">' + (tot ? fmtDur(tot) : "free") + "</span>" +
         "</div>";
     });
     html += "</div>";
+    var freeWeek = Math.max(0, wake * 7 - totalMin);
     html += '<div class="cat-legend">' +
       '<span class="cat-dot work"></span>Work · ' + fmtDur(catMin.work) +
       '<span class="cat-dot personal"></span>Personal · ' + fmtDur(catMin.personal) +
       '<span class="cat-dot school"></span>School · ' + fmtDur(catMin.school) +
+      '<span class="cat-dot free"></span>Free · ' + fmtDur(freeWeek) +
       "</div>";
 
     // Tasks as time blocks, grouped by day (Monday first). A repeating task
@@ -1471,6 +1485,11 @@
         '<button data-t="dark" class="' + (theme === "dark" ? "is-active" : "") + '">Dark</button>' +
         '<button data-t="light" class="' + (theme === "light" ? "is-active" : "") + '">Light</button>' +
       "</div></label>" +
+      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:5px;font-weight:600">Sleep — used to size your day on the Week tab</span>' +
+        '<div class="field-row">' +
+          '<label style="flex:1"><span style="display:block;font-size:0.72rem;color:var(--text-faint);margin-bottom:3px">Wake up</span><input type="time" id="stWake" value="' + esc(state.settings.wakeTime || "08:30") + '"></label>' +
+          '<label style="flex:1"><span style="display:block;font-size:0.72rem;color:var(--text-faint);margin-bottom:3px">Bedtime</span><input type="time" id="stSleep" value="' + esc(state.settings.sleepTime || "01:00") + '"></label>' +
+        "</div></div>" +
       '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:5px;font-weight:600">Reminders</span>' +
         '<div class="row" style="border:none;padding:4px 0"><div class="row-body"><div class="row-text">Notifications</div>' +
         '<div class="row-meta"><span class="pill">' + notif + "</span></div></div>" +
@@ -1490,6 +1509,9 @@
           setTheme(btn.getAttribute("data-t"));
           b.querySelectorAll("#stTheme button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
         });
+        var wakeEl = b.querySelector("#stWake"), sleepEl = b.querySelector("#stSleep");
+        wakeEl.onchange = function () { if (wakeEl.value) { state.settings.wakeTime = wakeEl.value; save(); } };
+        sleepEl.onchange = function () { if (sleepEl.value) { state.settings.sleepTime = sleepEl.value; save(); } };
         var notifBtn = b.querySelector('[data-x="notif"]');
         if (notifBtn) notifBtn.onclick = function () {
           if (Notification.permission === "granted") { fireNotification("Nest test", "Notifications are working!"); }
@@ -1504,7 +1526,7 @@
               state = defaultState(); save(); applyTheme(); closeModal(); setView("habits"); toast("Fresh start");
             });
         };
-        f.querySelector('[data-x="close"]').onclick = closeModal;
+        f.querySelector('[data-x="close"]').onclick = function () { closeModal(); render(); };
       }
     });
   }

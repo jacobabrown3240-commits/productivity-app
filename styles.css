@@ -478,6 +478,7 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .cat-dot.work { background: #0ea5e9; }
 .cat-dot.personal { background: #8b5cf6; }
 .cat-dot.school { background: #f59e0b; }
+.cat-dot.free { background: var(--bg-elev-2); box-shadow: inset 0 0 0 1.5px var(--line); }
 
 /* Week switcher */
 .habit-monthbar {
@@ -538,7 +539,9 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .daybar-track .seg.work { background: #0ea5e9; }
 .daybar-track .seg.personal { background: #8b5cf6; }
 .daybar-track .seg.school { background: #f59e0b; }
-.daybar-val { width: 48px; flex: 0 0 auto; text-align: right; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.daybar-val { width: 52px; flex: 0 0 auto; text-align: right; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.daybar-val.over { color: var(--danger); }
+.daybars-cap { font-size: 0.72rem; color: var(--text-faint); margin: 0 2px 8px; }
 
 /* Category legend */
 .cat-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; font-size: 0.76rem; color: var(--text-dim); font-weight: 600; margin: 10px 2px 4px; }
