@@ -546,14 +546,38 @@ label.field > span { display: block; font-size: 0.8rem; color: var(--text-dim); 
 .cat-legend .cat-dot:first-child { margin-left: 0; }
 
 /* Day headings in the task list */
-.day-head { font-size: 0.82rem; font-weight: 800; margin: 16px 2px 6px; letter-spacing: -0.01em; }
+.day-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 0.82rem; font-weight: 800; margin: 18px 2px 8px; letter-spacing: -0.01em; }
+.day-total { font-size: 0.74rem; font-weight: 700; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
-/* Task rows (reuse .row / .check / .pill) */
-.task-row .cat-dot { margin: 0 2px; }
-.task-row.done .row-text { text-decoration: line-through; color: var(--text-faint); }
-.pill.work { background: rgba(14,165,233,0.16); color: #38bdf8; }
-.pill.personal { background: rgba(139,92,246,0.18); color: #a78bfa; }
-.pill.school { background: rgba(245,158,11,0.18); color: #fbbf24; }
+/* Task time blocks (height scales with duration) */
+.tblocks { display: flex; flex-direction: column; gap: 8px; }
+.tblock {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 16px; border-radius: 13px;
+  border: 1px solid var(--line); background: var(--card);
+  overflow: hidden; cursor: pointer; transition: transform .1s, opacity .12s;
+}
+.tblock:active { transform: scale(0.99); }
+.tblock-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
+.tblock.work    { background: rgba(14,165,233,0.10); }
+.tblock.personal{ background: rgba(139,92,246,0.10); }
+.tblock.school  { background: rgba(245,158,11,0.10); }
+.tblock.work    .tblock-bar { background: #0ea5e9; }
+.tblock.personal .tblock-bar { background: #8b5cf6; }
+.tblock.school  .tblock-bar { background: #f59e0b; }
+.tblock-check {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--bg-elev);
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+}
+.tblock.done .tblock-check { background: var(--accent); border-color: var(--accent); }
+.tblock-body { flex: 1; min-width: 0; }
+.tblock-title { font-weight: 700; font-size: 0.94rem; }
+.tblock-meta { font-size: 0.76rem; color: var(--text-dim); margin-top: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tblock-meta .rep { display: inline-flex; align-items: center; gap: 2px; }
+.tblock.done { opacity: 0.55; }
+.tblock.done .tblock-title { text-decoration: line-through; color: var(--text-faint); }
+.tblock-actions { flex: 0 0 auto; display: flex; align-self: flex-start; }
 
 /* Multi-day picker (in the task modal) */
 .day-pick { display: flex; gap: 6px; }

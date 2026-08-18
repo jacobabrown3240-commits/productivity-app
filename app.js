@@ -56,7 +56,8 @@
     grip: '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>',
     "chevron-left": '<polyline points="15 18 9 12 15 6"/>',
     "chevron-right": '<polyline points="9 18 15 12 9 6"/>',
-    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'
+    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    check: '<polyline points="20 6 9 17 4 12"/>'
   };
   var ICONS_FILLED = { grip: 1, pause: 1, flame: 1 };
   function ic(name, cls) {
@@ -575,19 +576,27 @@
       '<span class="cat-dot school"></span>School · ' + fmtDur(catMin.school) +
       "</div>";
 
-    // Tasks grouped by day (Monday first); a repeating task shows on each day.
+    // Tasks as time blocks, grouped by day (Monday first). A repeating task
+    // shows on each of its days; block height scales with its duration.
     html += '<div class="section-label">Tasks</div>';
     MON_ORDER.forEach(function (dow) {
       var dayOcc = occ.filter(function (o) { return o.dow === dow; });
       if (!dayOcc.length) return;
       dayOcc.sort(function (a, b) { return CATS.indexOf(normCat(a.t.cat)) - CATS.indexOf(normCat(b.t.cat)); });
-      html += '<div class="day-head">' + WEEKDAYS[dow] + "</div>";
-      html += '<div class="card"><div class="rows">';
-      dayOcc.forEach(function (o) { html += taskRow(o.t, o.dk, o.done); });
-      html += "</div></div>";
+      var dayTot = dayOcc.reduce(function (n, o) { return n + (o.t.minutes || 0); }, 0);
+      html += '<div class="day-head">' + WEEKDAYS[dow] + '<span class="day-total">' + fmtDur(dayTot) + "</span></div>";
+      html += '<div class="tblocks">';
+      dayOcc.forEach(function (o) { html += taskBlock(o.t, o.dk, o.done); });
+      html += "</div>";
     });
 
     el.innerHTML = html;
+  }
+
+  // Height of a block in px, scaled by its duration so longer tasks read as
+  // bigger chunks of time (with a comfortable minimum tap target).
+  function blockHeight(min) {
+    return Math.min(200, Math.round(44 + Math.max(0, (min || 0) - 30) * 0.6));
   }
 
   function catProgressRow(cat, occ) {
@@ -604,20 +613,20 @@
       "</div>";
   }
 
-  function taskRow(t, dk, done) {
+  function taskBlock(t, dk, done) {
     var cat = normCat(t.cat);
     var repeats = taskDays(t).length > 1;
-    return '<div class="row task-row ' + (done ? "done" : "") + '" data-id="' + t.id + '">' +
-      '<button class="check ' + (done ? "done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" data-date="' + dk + '" aria-label="Done"></button>' +
-      '<span class="cat-dot ' + cat + '"></span>' +
-      '<div class="row-body">' +
-        '<div class="row-text">' + esc(t.text) + "</div>" +
-        '<div class="row-meta"><span class="pill">' + fmtDur(t.minutes) + "</span>" +
-          '<span class="pill ' + cat + '">' + catLabel(cat) + "</span>" +
-          (repeats ? '<span class="pill">' + ic("repeat", "ic-sm") + " " + taskDays(t).length + "×</span>" : "") +
+    return '<div class="tblock ' + cat + (done ? " done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" data-date="' + dk + '"' +
+      ' style="min-height:' + blockHeight(t.minutes) + 'px" aria-label="' + esc(t.text) + '">' +
+      '<span class="tblock-bar"></span>' +
+      '<span class="tblock-check">' + (done ? ic("check", "ic-sm") : "") + "</span>" +
+      '<div class="tblock-body">' +
+        '<div class="tblock-title">' + esc(t.text) + "</div>" +
+        '<div class="tblock-meta">' + fmtDur(t.minutes) + " · " + catLabel(cat) +
+          (repeats ? ' · <span class="rep">' + ic("repeat", "ic-sm") + " " + taskDays(t).length + "×</span>" : "") +
         "</div>" +
       "</div>" +
-      '<div class="row-actions">' +
+      '<div class="tblock-actions">' +
         '<button class="mini-btn" data-act="edit-task" data-id="' + t.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
         '<button class="mini-btn" data-act="del-task" data-id="' + t.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
       "</div>" +
