@@ -21,10 +21,12 @@ sending reminder notifications.
   **waking day**, so the filled part shows the chunk that's taken and the empty
   part is free time. Set your **wake/bedtime in Settings** (default 8:30am–1am)
   to size the day; the legend totals Work, Personal, School and **Free** hours
-  for the week. Flip between weeks with the arrows. **Import shifts** lets you
-  paste a work schedule (e.g. the text from a shift-app screenshot) and drops it
-  in as Work blocks for the week you're viewing — those shifts stay on that week
-  and don't repeat.
+  for the week. Flip between weeks with the arrows. **Scan schedule** reads a
+  work-schedule screenshot on-device — tap *Scan schedule* and pick the image,
+  or (once Nest is installed) **share** a screenshot straight to Nest — and it
+  fills in your shifts as Work blocks for that week (it even reads the dates to
+  pick the right week). Shifts stay on their week and don't repeat; you confirm
+  what it found before it's added.
 - **Reminders** — set a **notification** for anything you shouldn't forget:
   one-off reminders for a specific day (pick up milk after work, a dentist
   appointment) *and* **weekly** recurring reminders (bin night, gym, call

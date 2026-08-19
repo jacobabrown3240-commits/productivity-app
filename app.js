@@ -57,7 +57,8 @@
     "chevron-left": '<polyline points="15 18 9 12 15 6"/>',
     "chevron-right": '<polyline points="9 18 15 12 9 6"/>',
     "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-    check: '<polyline points="20 6 9 17 4 12"/>'
+    check: '<polyline points="20 6 9 17 4 12"/>',
+    camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
   };
   var ICONS_FILLED = { grip: 1, pause: 1, flame: 1 };
   function ic(name, cls) {
@@ -524,37 +525,122 @@
     return out;
   }
 
-  function importShiftsModal() {
-    var wk = viewWeekStart();
+  // Find the Monday-start key for the week a schedule refers to, by reading a
+  // date like "August 17" (or "8/17") out of the text. Falls back to null.
+  function detectWeekKey(text) {
+    var months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+    function build(mon, day) {
+      if (day < 1 || day > 31) return null;
+      var now = new Date(); now.setHours(0, 0, 0, 0);
+      var d = new Date(now.getFullYear(), mon, day);
+      var diff = (d - now) / 86400000;          // wrap year at Dec/Jan boundaries
+      if (diff < -182) d = new Date(now.getFullYear() + 1, mon, day);
+      else if (diff > 182) d = new Date(now.getFullYear() - 1, mon, day);
+      return weekStartKey(d);
+    }
+    var re = /\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/gi, m;
+    while ((m = re.exec(text)) !== null) {
+      var mon = m[1].slice(0, 3).toLowerCase();
+      if (months.hasOwnProperty(mon)) { var k = build(months[mon], parseInt(m[2], 10)); if (k) return k; }
+    }
+    var n = /\b(\d{1,2})[\/.](\d{1,2})(?:[\/.]\d{2,4})?\b/.exec(text);   // 8/17 or 08.17.2026 (US M/D)
+    if (n) return build(parseInt(n[1], 10) - 1, parseInt(n[2], 10));
+    return null;
+  }
+
+  function weekOffsetFor(wk) {
+    return Math.round((keyToDate(wk) - keyToDate(weekStartKey())) / (7 * 86400000));
+  }
+
+  // Add parsed shifts as Work blocks pinned to week `wk`, replacing any shifts
+  // previously scanned into that week (so re-scanning is idempotent).
+  function addImportedShifts(shifts, wk) {
+    state.tasks = state.tasks.filter(function (t) { return !(t.imported && t.week === wk); });
+    shifts.forEach(function (s) {
+      state.tasks.push({
+        id: uid(),
+        text: "Work " + fmtTime(minToHM(s.start)) + "–" + fmtTime(minToHM(s.end)),
+        days: [s.dow], cat: "work", minutes: s.minutes,
+        week: wk, imported: true, done: {}, created: Date.now()
+      });
+    });
+    save();
+  }
+
+  // --- Screenshot → schedule (on-device OCR) ---
+  var ocrLoading = null;
+  function loadOcr() {
+    if (window.Tesseract) return Promise.resolve();
+    if (ocrLoading) return ocrLoading;
+    ocrLoading = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "vendor/tesseract/tesseract.min.js";
+      s.onload = function () { resolve(); };
+      s.onerror = function () { ocrLoading = null; reject(new Error("ocr")); };
+      document.head.appendChild(s);
+    });
+    return ocrLoading;
+  }
+
+  function pickScheduleImage() {
+    var inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) scanSchedule(f); };
+    inp.click();
+  }
+
+  function scanSchedule(blob) {
+    openModal({
+      title: "Reading your schedule…",
+      body: '<div class="scan-loading"><span class="spinner"></span><p>Recognising the text in your screenshot. This can take a few seconds the first time.</p></div>',
+      foot: ""
+    });
+    loadOcr()
+      .then(function () {
+        return Tesseract.createWorker("eng", 1, {
+          workerPath: "vendor/tesseract/worker.min.js",
+          corePath: "vendor/tesseract/tesseract-core-simd-lstm.wasm.js",
+          langPath: "vendor/tesseract/"
+        });
+      })
+      .then(function (worker) {
+        return worker.recognize(blob).then(function (res) {
+          return worker.terminate().then(function () { return res.data.text; });
+        });
+      })
+      .then(function (text) {
+        var shifts = parseShifts(text);
+        if (!shifts.length) { closeModal(); toast("Couldn’t find any shifts in that image"); return; }
+        scanConfirmModal(shifts, detectWeekKey(text) || viewWeekStart());
+      })
+      .catch(function () { closeModal(); toast("Couldn’t read that image — try a clearer screenshot"); });
+  }
+
+  function scanConfirmModal(shifts, wk) {
     var startDate = keyToDate(wk), endDate = keyToDate(addDays(wk, 6));
     var range = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
       " – " + endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    var total = shifts.reduce(function (n, s) { return n + s.minutes; }, 0);
+    var rows = shifts.map(function (s) {
+      return '<div class="scan-row"><span class="scan-day">' + WEEKDAYS[s.dow] + "</span>" +
+        '<span class="scan-time">' + fmtTime(minToHM(s.start)) + " – " + fmtTime(minToHM(s.end)) + "</span>" +
+        '<span class="scan-dur">' + fmtDur(s.minutes) + "</span></div>";
+    }).join("");
     var body =
-      '<p class="rc-sub" style="margin:0 0 10px">Paste your shifts below (or the whole schedule screenshot text). ' +
-      'They’ll be added as Work blocks to the week you’re viewing — <b>' + esc(range) + '</b> — and won’t repeat.</p>' +
-      '<textarea id="impText" placeholder="Monday 10:00 am 8:00 pm\nTuesday 10:00 am 8:00 pm\nWednesday 10:00 am 4:00 pm\nThursday 9:00 am 4:00 pm\nFriday 9:00 am 4:00 pm" style="min-height:150px"></textarea>' +
-      '<p class="hint">One shift per day. Re-importing replaces the shifts already imported for this week.</p>';
+      '<p class="rc-sub" style="margin:0 0 10px">Found <b>' + shifts.length + " shift" + (shifts.length === 1 ? "" : "s") +
+      "</b> (" + fmtDur(total) + ") for <b>" + esc(range) + "</b>. They’ll be added as Work blocks for that week only.</p>" +
+      '<div class="scan-list">' + rows + "</div>" +
+      '<p class="hint">Not quite right? Cancel and re-scan a clearer screenshot, or add shifts by hand.</p>';
     openModal({
-      title: "Import work shifts",
+      title: "Add these shifts?",
       body: body,
-      foot: '<button class="btn btn-ghost" data-x="cancel">Cancel</button><button class="btn btn-primary" data-x="add">Add shifts</button>',
+      foot: '<button class="btn btn-ghost" data-x="cancel">Cancel</button><button class="btn btn-primary" data-x="add">Add ' + shifts.length + " shift" + (shifts.length === 1 ? "" : "s") + "</button>",
       onMount: function (b, f) {
-        b.querySelector("#impText").focus();
         f.querySelector('[data-x="cancel"]').onclick = closeModal;
         f.querySelector('[data-x="add"]').onclick = function () {
-          var shifts = parseShifts(b.querySelector("#impText").value);
-          if (!shifts.length) { toast("No shifts found — check the format"); return; }
-          // Replace any previously-imported shifts for this week.
-          state.tasks = state.tasks.filter(function (t) { return !(t.imported && t.week === wk); });
-          shifts.forEach(function (s) {
-            state.tasks.push({
-              id: uid(),
-              text: "Work " + fmtTime(minToHM(s.start)) + "–" + fmtTime(minToHM(s.end)),
-              days: [s.dow], cat: "work", minutes: s.minutes,
-              week: wk, imported: true, done: {}, created: Date.now()
-            });
-          });
-          save(); closeModal(); render();
+          addImportedShifts(shifts, wk);
+          weekOffset = weekOffsetFor(wk);   // jump the view to the imported week
+          closeModal(); render();
           toast("Added " + shifts.length + " shift" + (shifts.length === 1 ? "" : "s"));
         };
       }
@@ -583,7 +669,7 @@
 
     html += '<div class="wk-actions">' +
       '<button class="btn btn-primary" data-act="add-task">+ New task</button>' +
-      '<button class="btn btn-ghost" data-act="import-shifts">' + ic("download", "ic-sm") + " Import shifts</button>" +
+      '<button class="btn btn-ghost" data-act="scan-schedule">' + ic("camera", "ic-sm") + " Scan schedule</button>" +
       "</div>";
 
     if (!tasks.length) {
@@ -1418,7 +1504,7 @@
       case "week-prev": shiftWeek(-1); break;
       case "week-next": shiftWeek(1); break;
       case "add-task": taskModal(null); break;
-      case "import-shifts": importShiftsModal(); break;
+      case "scan-schedule": pickScheduleImage(); break;
       case "edit-task": taskModal(findTask(actEl.getAttribute("data-id"))); break;
       case "del-task": delTask(actEl.getAttribute("data-id")); break;
       case "toggle-task": toggleTaskOn(findTask(actEl.getAttribute("data-id")), actEl.getAttribute("data-date")); render(); break;
@@ -1677,6 +1763,24 @@
   updateNotifButton();
   setView("habits");
   checkDue();
+  handleSharedImage();
+
+  // A screenshot shared to Nest (Web Share Target) is stashed by the service
+  // worker; on launch with ?share=1 we pull it out and run the scan flow.
+  function handleSharedImage() {
+    if (new URLSearchParams(location.search).get("share") !== "1") return;
+    history.replaceState(null, "", location.pathname);   // clean the URL
+    if (!("caches" in window)) return;
+    caches.open("nest-share").then(function (c) {
+      return c.match("shared-image").then(function (res) {
+        if (!res) return;
+        return res.blob().then(function (blob) {
+          c.delete("shared-image");
+          scanSchedule(blob);
+        });
+      });
+    }).catch(function () {});
+  }
 
   // Re-check reminders periodically and when the app regains focus.
   setInterval(checkDue, 30000);
