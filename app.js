@@ -56,9 +56,7 @@
     grip: '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>',
     "chevron-left": '<polyline points="15 18 9 12 15 6"/>',
     "chevron-right": '<polyline points="9 18 15 12 9 6"/>',
-    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-    check: '<polyline points="20 6 9 17 4 12"/>',
-    camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'
+    "bar-chart": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'
   };
   var ICONS_FILLED = { grip: 1, pause: 1, flame: 1 };
   function ic(name, cls) {
@@ -111,24 +109,16 @@
           ]
         }
       ],
-      tasks: [
-        { id: uid(), text: "Deep work block", days: [1, 3, 5], cat: "work", minutes: 120, done: {}, created: Date.now() },
-        { id: uid(), text: "Emails & admin", days: [1, 2, 3, 4, 5], cat: "work", minutes: 30, done: {}, created: Date.now() },
-        { id: uid(), text: "Lecture / class", days: [1, 3], cat: "school", minutes: 90, done: {}, created: Date.now() },
-        { id: uid(), text: "Study session", days: [2, 4], cat: "school", minutes: 60, done: {}, created: Date.now() },
-        { id: uid(), text: "Gym / workout", days: [2, 4, 6], cat: "personal", minutes: 60, done: {}, created: Date.now() },
-        { id: uid(), text: "Grocery shopping", days: [6], cat: "personal", minutes: 45, done: {}, created: Date.now() }
-      ],
       reviews: {},
       notes: [
         {
           id: uid(),
           title: "Welcome to Nest",
-          body: "This is your pocket notepad.\n\n• Jot anything here\n• Plan your week on the Week tab — give each task a day and a rough time\n• Set reminders so you don't forget things\n• Turn on notifications up top so reminders can nudge you\n\nTap a note to edit it.",
+          body: "This is your pocket notepad.\n\n• Jot anything here\n• Set reminders so you don't forget things\n• Turn on notifications up top so reminders can nudge you\n\nTap a note to edit it.",
           updated: Date.now()
         }
       ],
-      settings: { theme: "dark", wakeTime: "08:30", sleepTime: "01:00" }
+      settings: { theme: "dark" }
     };
   }
 
@@ -142,11 +132,8 @@
       if (!s.lists) s.lists = [];
       if (!s.checklists) s.checklists = [];
       if (!s.notes) s.notes = [];
-      if (!s.tasks) s.tasks = [];
       if (!s.reviews) s.reviews = {};
       if (!s.settings) s.settings = { theme: "dark" };
-      if (!s.settings.wakeTime) s.settings.wakeTime = "08:30";
-      if (!s.settings.sleepTime) s.settings.sleepTime = "01:00";
       // backfill new per-item fields
       s.lists.forEach(function (l) {
         (l.items || []).forEach(function (it) {
@@ -154,14 +141,10 @@
           if (it.qty === undefined) it.qty = "";
         });
       });
-      s.tasks.forEach(function (t) {
-        if (!t.done || typeof t.done !== "object") t.done = {};
-        if (!Array.isArray(t.days)) t.days = typeof t.day === "number" ? [t.day] : [1];
-        delete t.day;
-        if (["work", "personal", "school"].indexOf(t.cat) < 0) t.cat = "work";
-        if (typeof t.minutes !== "number") t.minutes = 30;
-      });
+      // The Week tracker was retired; drop its leftover state.
       delete s.habits;
+      delete s.tasks;
+      if (s.settings) { delete s.settings.wakeTime; delete s.settings.sleepTime; }
       return s;
     } catch (e) {
       return defaultState();
@@ -373,10 +356,8 @@
   // Navigation
   // -----------------------------------------------------------
   var currentView = "habits";
-  // Weekly tracker: which week is on screen (0 = this week, -1 = last week…).
-  var weekOffset = 0;
   var VIEW_META = {
-    habits:     { title: "Weekly Tracker", sub: function () { return "Tasks by day · time by category"; } },
+    habits:     { title: "Week",       sub: function () { return "Rebuilding this section"; } },
     reminders:  { title: "Reminders",  sub: function () { return "Nudges so you don’t forget"; } },
     shopping:   { title: "Shopping",   sub: function () { return "Lists for the store"; } },
     checklists: { title: "Checklists", sub: function () { return "Routines that reset each week"; } },
@@ -384,7 +365,6 @@
   };
 
   function setView(view) {
-    if (view === "habits" && currentView !== "habits") weekOffset = 0;
     currentView = view;
     document.querySelectorAll(".view").forEach(function (v) { v.hidden = true; });
     $("#view-" + view).hidden = false;
@@ -441,10 +421,8 @@
   }
 
   // -----------------------------------------------------------
-  // Weekly task tracker
+  // Week tab (placeholder) + shared date helpers
   // -----------------------------------------------------------
-  var MON_ORDER = [1, 2, 3, 4, 5, 6, 0];   // display order, Monday → Sunday
-
   function addDays(key, n) {
     var p = key.split("-");
     var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
@@ -456,443 +434,8 @@
     return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
   }
 
-  // The Monday-start key of the week currently on screen.
-  function viewWeekStart() {
-    var d = new Date();
-    d.setDate(d.getDate() + weekOffset * 7);
-    return weekStartKey(d);
-  }
-  var CATS = ["work", "personal", "school"];
-  function catLabel(c) { return c === "personal" ? "Personal" : c === "school" ? "School" : "Work"; }
-  function normCat(c) { return CATS.indexOf(c) >= 0 ? c : "work"; }
-
-  // A task can be assigned to several weekdays; completion is tracked per
-  // actual date, so the same task repeats every week and each day is its own
-  // tick. `taskDays` also tolerates the older single-`day` shape.
-  function taskDays(t) {
-    if (t.days && t.days.length) return t.days;
-    return typeof t.day === "number" ? [t.day] : [];
-  }
-  function dateOfDay(wk, dow) { return addDays(wk, MON_ORDER.indexOf(dow)); }
-  function parseHM(hm) { var p = (hm || "0:0").split(":"); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
-  // Minutes you're awake each day (bedtime − wake, wrapping past midnight).
-  function wakingMinutes() {
-    var wake = parseHM(state.settings.wakeTime || "08:30");
-    var sleep = parseHM(state.settings.sleepTime || "01:00");
-    if (sleep <= wake) sleep += 1440;
-    return sleep - wake;
-  }
-  function taskDoneOn(t, dk) { return !!(t.done && t.done[dk]); }
-  function toggleTaskOn(t, dk) {
-    if (!t.done) t.done = {};
-    if (t.done[dk]) delete t.done[dk]; else t.done[dk] = true;
-    save();
-  }
-  function fmtDur(min) {
-    min = min || 0;
-    var h = Math.floor(min / 60), m = min % 60;
-    if (h && m) return h + "h " + m + "m";
-    if (h) return h + "h";
-    return m + "m";
-  }
-  function minToHM(min) { return pad(Math.floor(min / 60)) + ":" + pad(min % 60); }
-
-  // Pull "weekday … start-time … end-time" triples out of pasted schedule text
-  // (tolerant of the messy layout you get copying a shift app). Returns a list
-  // of { dow, start, end, minutes }, one shift per day.
-  function parseShifts(text) {
-    var dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-    var re = /([a-z]{3,})|(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi;
-    var out = [], curDay = null, pending = [], m;
-    while ((m = re.exec(text)) !== null) {
-      if (m[1]) {
-        var w = m[1].slice(0, 3).toLowerCase();
-        if (dayMap.hasOwnProperty(w)) { curDay = dayMap[w]; pending = []; }
-      } else if (m[4]) {
-        if (curDay === null) continue;
-        var hh = parseInt(m[2], 10), mm = m[3] ? parseInt(m[3], 10) : 0;
-        var pm = m[4].toLowerCase().charAt(0) === "p";
-        if (pm && hh !== 12) hh += 12;
-        if (!pm && hh === 12) hh = 0;
-        pending.push(hh * 60 + mm);
-        if (pending.length === 2) {
-          var mins = pending[1] - pending[0]; if (mins <= 0) mins += 1440;
-          out.push({ dow: curDay, start: pending[0], end: pending[1], minutes: mins });
-          curDay = null; pending = [];
-        }
-      }
-    }
-    return out;
-  }
-
-  // Find the Monday-start key for the week a schedule refers to, by reading a
-  // date like "August 17" (or "8/17") out of the text. Falls back to null.
-  function detectWeekKey(text) {
-    var months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
-    function build(mon, day) {
-      if (day < 1 || day > 31) return null;
-      var now = new Date(); now.setHours(0, 0, 0, 0);
-      var d = new Date(now.getFullYear(), mon, day);
-      var diff = (d - now) / 86400000;          // wrap year at Dec/Jan boundaries
-      if (diff < -182) d = new Date(now.getFullYear() + 1, mon, day);
-      else if (diff > 182) d = new Date(now.getFullYear() - 1, mon, day);
-      return weekStartKey(d);
-    }
-    var re = /\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/gi, m;
-    while ((m = re.exec(text)) !== null) {
-      var mon = m[1].slice(0, 3).toLowerCase();
-      if (months.hasOwnProperty(mon)) { var k = build(months[mon], parseInt(m[2], 10)); if (k) return k; }
-    }
-    var n = /\b(\d{1,2})[\/.](\d{1,2})(?:[\/.]\d{2,4})?\b/.exec(text);   // 8/17 or 08.17.2026 (US M/D)
-    if (n) return build(parseInt(n[1], 10) - 1, parseInt(n[2], 10));
-    return null;
-  }
-
-  function weekOffsetFor(wk) {
-    return Math.round((keyToDate(wk) - keyToDate(weekStartKey())) / (7 * 86400000));
-  }
-
-  // Add parsed shifts as Work blocks pinned to week `wk`, replacing any shifts
-  // previously scanned into that week (so re-scanning is idempotent).
-  function addImportedShifts(shifts, wk) {
-    state.tasks = state.tasks.filter(function (t) { return !(t.imported && t.week === wk); });
-    shifts.forEach(function (s) {
-      state.tasks.push({
-        id: uid(),
-        text: "Work " + fmtTime(minToHM(s.start)) + "–" + fmtTime(minToHM(s.end)),
-        days: [s.dow], cat: "work", minutes: s.minutes,
-        week: wk, imported: true, done: {}, created: Date.now()
-      });
-    });
-    save();
-  }
-
-  // --- Screenshot → schedule (on-device OCR) ---
-  var ocrLoading = null;
-  function loadOcr() {
-    if (window.Tesseract) return Promise.resolve();
-    if (ocrLoading) return ocrLoading;
-    ocrLoading = new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = "vendor/tesseract/tesseract.min.js";
-      s.onload = function () { resolve(); };
-      s.onerror = function () { ocrLoading = null; reject(new Error("ocr")); };
-      document.head.appendChild(s);
-    });
-    return ocrLoading;
-  }
-
-  function pickScheduleImage() {
-    var inp = document.createElement("input");
-    inp.type = "file"; inp.accept = "image/*";
-    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) scanSchedule(f); };
-    inp.click();
-  }
-
-  function scanSchedule(blob) {
-    openModal({
-      title: "Reading your schedule…",
-      body: '<div class="scan-loading"><span class="spinner"></span><p>Recognising the text in your screenshot. This can take a few seconds the first time.</p></div>',
-      foot: ""
-    });
-    loadOcr()
-      .then(function () {
-        return Tesseract.createWorker("eng", 1, {
-          workerPath: "vendor/tesseract/worker.min.js",
-          corePath: "vendor/tesseract/tesseract-core-simd-lstm.wasm.js",
-          langPath: "vendor/tesseract/"
-        });
-      })
-      .then(function (worker) {
-        return worker.recognize(blob).then(function (res) {
-          return worker.terminate().then(function () { return res.data.text; });
-        });
-      })
-      .then(function (text) {
-        var shifts = parseShifts(text);
-        if (!shifts.length) { closeModal(); toast("Couldn’t find any shifts in that image"); return; }
-        scanConfirmModal(shifts, detectWeekKey(text) || viewWeekStart());
-      })
-      .catch(function () { closeModal(); toast("Couldn’t read that image — try a clearer screenshot"); });
-  }
-
-  function scanConfirmModal(shifts, wk) {
-    var startDate = keyToDate(wk), endDate = keyToDate(addDays(wk, 6));
-    var range = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-      " – " + endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    var total = shifts.reduce(function (n, s) { return n + s.minutes; }, 0);
-    var rows = shifts.map(function (s) {
-      return '<div class="scan-row"><span class="scan-day">' + WEEKDAYS[s.dow] + "</span>" +
-        '<span class="scan-time">' + fmtTime(minToHM(s.start)) + " – " + fmtTime(minToHM(s.end)) + "</span>" +
-        '<span class="scan-dur">' + fmtDur(s.minutes) + "</span></div>";
-    }).join("");
-    var body =
-      '<p class="rc-sub" style="margin:0 0 10px">Found <b>' + shifts.length + " shift" + (shifts.length === 1 ? "" : "s") +
-      "</b> (" + fmtDur(total) + ") for <b>" + esc(range) + "</b>. They’ll be added as Work blocks for that week only.</p>" +
-      '<div class="scan-list">' + rows + "</div>" +
-      '<p class="hint">Not quite right? Cancel and re-scan a clearer screenshot, or add shifts by hand.</p>';
-    openModal({
-      title: "Add these shifts?",
-      body: body,
-      foot: '<button class="btn btn-ghost" data-x="cancel">Cancel</button><button class="btn btn-primary" data-x="add">Add ' + shifts.length + " shift" + (shifts.length === 1 ? "" : "s") + "</button>",
-      onMount: function (b, f) {
-        f.querySelector('[data-x="cancel"]').onclick = closeModal;
-        f.querySelector('[data-x="add"]').onclick = function () {
-          addImportedShifts(shifts, wk);
-          weekOffset = weekOffsetFor(wk);   // jump the view to the imported week
-          closeModal(); render();
-          toast("Added " + shifts.length + " shift" + (shifts.length === 1 ? "" : "s"));
-        };
-      }
-    });
-  }
-
   function renderHabits() {
-    var el = $("#view-habits");
-    var wk = viewWeekStart();
-    var tasks = state.tasks;
-    var html = "";
-
-    // Week switcher
-    var startDate = keyToDate(wk);
-    var endDate = keyToDate(addDays(wk, 6));
-    var range = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-      " – " + endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    var rel = weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : weekOffset === 1 ? "Next week" : null;
-    html += '<div class="habit-monthbar">' +
-      '<button class="month-nav" data-act="week-prev" aria-label="Previous week">' + ic("chevron-left") + "</button>" +
-      '<div class="week-label"><div class="habit-month-label">' + esc(rel || range) + "</div>" +
-        (rel ? '<div class="week-sub">' + esc(range) + "</div>" : "") +
-      "</div>" +
-      '<button class="month-nav" data-act="week-next" aria-label="Next week">' + ic("chevron-right") + "</button>" +
-      "</div>";
-
-    html += '<div class="wk-actions">' +
-      '<button class="btn btn-primary" data-act="add-task">+ New task</button>' +
-      '<button class="btn btn-ghost" data-act="scan-schedule">' + ic("camera", "ic-sm") + " Scan schedule</button>" +
-      "</div>";
-
-    if (!tasks.length) {
-      html += emptyBox("bar-chart", "No tasks yet", "Add tasks, pick the days they repeat and a rough time, then tick them off through the week.");
-      el.innerHTML = html; return;
-    }
-
-    // Every task-day this week is one "occurrence" you can tick off. A task
-    // pinned to a single week (t.week, e.g. imported work shifts) only shows up
-    // in that week; everything else repeats every week.
-    var occ = [];
-    tasks.forEach(function (t) {
-      if (t.week && t.week !== wk) return;
-      taskDays(t).forEach(function (dow) {
-        var dk = dateOfDay(wk, dow);
-        occ.push({ t: t, dow: dow, dk: dk, done: taskDoneOn(t, dk) });
-      });
-    });
-
-    var total = occ.length, doneCount = 0;
-    var catMin = { work: 0, personal: 0, school: 0 };
-    var dayMin = {};
-    MON_ORDER.forEach(function (dow) { dayMin[dow] = { work: 0, personal: 0, school: 0 }; });
-    occ.forEach(function (o) {
-      if (o.done) doneCount++;
-      var c = normCat(o.t.cat), m = o.t.minutes || 0;
-      catMin[c] += m;
-      dayMin[o.dow][c] += m;
-    });
-    var totalMin = catMin.work + catMin.personal + catMin.school;
-    var pct = total ? Math.round((doneCount / total) * 100) : 0;
-
-    // Summary strip + overall progress
-    html += '<div class="habit-summary">' +
-      '<div class="hstat"><div class="n">' + doneCount + "/" + total + '</div><div class="l">done</div></div>' +
-      '<div class="hstat"><div class="n">' + fmtDur(totalMin) + '</div><div class="l">planned</div></div>' +
-      '<div class="hstat"><div class="n accent">' + pct + '%</div><div class="l">complete</div></div>' +
-      "</div>";
-    html += '<div class="wk-progress"><span style="width:' + pct + '%"></span></div>';
-
-    // Progress by category (completion)
-    var progressRows = "";
-    CATS.forEach(function (c) { progressRows += catProgressRow(c, occ); });
-    if (progressRows) {
-      html += '<div class="section-label">Progress</div>';
-      html += '<div class="card catcard">' + progressRows + "</div>";
-    }
-
-    // Time by day — each bar is your whole waking day; filled = taken,
-    // empty = free. Scaled to how long you're awake (asleep window excluded).
-    var wake = wakingMinutes();
-    html += '<div class="section-label">Time by day</div>';
-    html += '<div class="daybars-cap">Each bar is your ' + fmtDur(wake) + ' awake · asleep ' +
-      fmtTime(state.settings.sleepTime) + " – " + fmtTime(state.settings.wakeTime) + "</div>";
-    html += '<div class="card daybars">';
-    MON_ORDER.forEach(function (dow, idx) {
-      var s = dayMin[dow], tot = s.work + s.personal + s.school;
-      var isToday = addDays(wk, idx) === todayKey();
-      var over = tot > wake;
-      html += '<div class="daybar' + (isToday ? " today" : "") + '">' +
-        '<span class="daybar-lbl">' + WEEKDAYS_SHORT[dow] + "</span>" +
-        '<div class="daybar-track" title="' + Math.round((tot / wake) * 100) + '% of your day">' +
-          '<span class="seg work" style="width:' + (s.work / wake) * 100 + '%"></span>' +
-          '<span class="seg personal" style="width:' + (s.personal / wake) * 100 + '%"></span>' +
-          '<span class="seg school" style="width:' + (s.school / wake) * 100 + '%"></span>' +
-        "</div>" +
-        '<span class="daybar-val' + (over ? " over" : "") + '">' + (tot ? fmtDur(tot) : "free") + "</span>" +
-        "</div>";
-    });
-    html += "</div>";
-    var freeWeek = Math.max(0, wake * 7 - totalMin);
-    html += '<div class="cat-legend">' +
-      '<span class="cat-dot work"></span>Work · ' + fmtDur(catMin.work) +
-      '<span class="cat-dot personal"></span>Personal · ' + fmtDur(catMin.personal) +
-      '<span class="cat-dot school"></span>School · ' + fmtDur(catMin.school) +
-      '<span class="cat-dot free"></span>Free · ' + fmtDur(freeWeek) +
-      "</div>";
-
-    // Tasks as time blocks, grouped by day (Monday first). A repeating task
-    // shows on each of its days; block height scales with its duration.
-    html += '<div class="section-label">Tasks</div>';
-    MON_ORDER.forEach(function (dow) {
-      var dayOcc = occ.filter(function (o) { return o.dow === dow; });
-      if (!dayOcc.length) return;
-      dayOcc.sort(function (a, b) { return CATS.indexOf(normCat(a.t.cat)) - CATS.indexOf(normCat(b.t.cat)); });
-      var dayTot = dayOcc.reduce(function (n, o) { return n + (o.t.minutes || 0); }, 0);
-      html += '<div class="day-head">' + WEEKDAYS[dow] + '<span class="day-total">' + fmtDur(dayTot) + "</span></div>";
-      html += '<div class="tblocks">';
-      dayOcc.forEach(function (o) { html += taskBlock(o.t, o.dk, o.done); });
-      html += "</div>";
-    });
-
-    el.innerHTML = html;
-  }
-
-  // Height of a block in px, scaled by its duration so longer tasks read as
-  // bigger chunks of time (with a comfortable minimum tap target).
-  function blockHeight(min) {
-    return Math.min(200, Math.round(44 + Math.max(0, (min || 0) - 30) * 0.6));
-  }
-
-  function catProgressRow(cat, occ) {
-    var list = occ.filter(function (o) { return normCat(o.t.cat) === cat; });
-    var tot = list.length;
-    if (!tot) return "";
-    var done = list.filter(function (o) { return o.done; }).length;
-    var p = Math.round((done / tot) * 100);
-    return '<div class="catrow">' +
-      '<div class="catrow-top"><span class="cat-dot ' + cat + '"></span>' +
-        '<span class="catrow-name">' + catLabel(cat) + "</span>" +
-        '<span class="catrow-count">' + done + "/" + tot + "</span></div>" +
-      '<div class="wk-progress ' + cat + '"><span style="width:' + p + '%"></span></div>' +
-      "</div>";
-  }
-
-  function taskBlock(t, dk, done) {
-    var cat = normCat(t.cat);
-    var repeats = taskDays(t).length > 1;
-    return '<div class="tblock ' + cat + (done ? " done" : "") + '" data-act="toggle-task" data-id="' + t.id + '" data-date="' + dk + '"' +
-      ' style="min-height:' + blockHeight(t.minutes) + 'px" aria-label="' + esc(t.text) + '">' +
-      '<span class="tblock-bar"></span>' +
-      '<span class="tblock-check">' + (done ? ic("check", "ic-sm") : "") + "</span>" +
-      '<div class="tblock-body">' +
-        '<div class="tblock-title">' + esc(t.text) + "</div>" +
-        '<div class="tblock-meta">' + fmtDur(t.minutes) + " · " + catLabel(cat) +
-          (repeats ? ' · <span class="rep">' + ic("repeat", "ic-sm") + " " + taskDays(t).length + "×</span>" : "") +
-        "</div>" +
-      "</div>" +
-      '<div class="tblock-actions">' +
-        '<button class="mini-btn" data-act="edit-task" data-id="' + t.id + '" aria-label="Edit">' + ic("edit") + "</button>" +
-        '<button class="mini-btn" data-act="del-task" data-id="' + t.id + '" aria-label="Delete">' + ic("trash") + "</button>" +
-      "</div>" +
-      "</div>";
-  }
-
-  function shiftWeek(delta) { weekOffset += delta; render(); }
-
-  function findTask(id) { return state.tasks.filter(function (t) { return t.id === id; })[0]; }
-
-  function delTask(id) {
-    var t = findTask(id); if (!t) return;
-    confirmModal("Delete task?", "“" + t.text + "” will be removed from your week.", { danger: true, okLabel: "Delete" })
-      .then(function (ok) {
-        if (!ok) return;
-        state.tasks = state.tasks.filter(function (x) { return x.id !== id; });
-        save(); render(); toast("Task deleted");
-      });
-  }
-
-  function taskModal(existing) {
-    var t = existing || { text: "", days: [new Date().getDay()], cat: "work", minutes: 30 };
-    var curCat = normCat(t.cat);
-    var chosenDays = taskDays(t).slice();
-    if (!chosenDays.length) chosenDays = [new Date().getDay()];
-    var curMin = t.minutes || 0;
-    var hrs = Math.floor(curMin / 60), mins = curMin % 60;
-
-    var dayChips = MON_ORDER.map(function (dow) {
-      return '<button type="button" class="day-chip' + (chosenDays.indexOf(dow) >= 0 ? " on" : "") + '" data-d="' + dow + '">' +
-        WEEKDAYS_SHORT[dow].slice(0, 2) + "</button>";
-    }).join("");
-    var hourOpts = "";
-    for (var hh = 0; hh <= 12; hh++) hourOpts += '<option value="' + hh + '"' + (hh === hrs ? " selected" : "") + ">" + hh + " h</option>";
-    var minOpts = [0, 15, 30, 45].map(function (mm) {
-      return '<option value="' + mm + '"' + (mm === mins ? " selected" : "") + ">" + mm + " m</option>";
-    }).join("");
-    var catBtns = CATS.map(function (c) {
-      return '<button type="button" data-c="' + c + '" class="' + (curCat === c ? "is-active" : "") + '">' + catLabel(c) + "</button>";
-    }).join("");
-
-    var body =
-      '<label class="field"><span>Task</span>' +
-      '<input type="text" id="tkText" placeholder="e.g. Deep work block" value="' + esc(t.text) + '"></label>' +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Days &middot; repeats every week</span>' +
-        '<div class="day-pick" id="tkDays">' + dayChips + "</div></div>" +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">Category</span>' +
-        '<div class="seg seg-3" id="tkCat">' + catBtns + "</div></div>" +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600">How long it takes</span>' +
-        '<div class="field-row"><select id="tkHours">' + hourOpts + '</select><select id="tkMins">' + minOpts + "</select></div></div>";
-
-    var foot = (existing ? '<button class="btn btn-danger" data-x="del">Delete</button>' : "") +
-      '<button class="btn btn-ghost" data-x="cancel">Cancel</button>' +
-      '<button class="btn btn-primary" data-x="save">Save</button>';
-
-    openModal({
-      title: existing ? "Edit task" : "New task",
-      body: body, foot: foot,
-      onMount: function (b, f) {
-        b.querySelector("#tkText").focus();
-        b.querySelector("#tkCat").addEventListener("click", function (e) {
-          var btn = e.target.closest("button[data-c]"); if (!btn) return;
-          curCat = btn.getAttribute("data-c");
-          b.querySelectorAll("#tkCat button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
-        });
-        b.querySelector("#tkDays").addEventListener("click", function (e) {
-          var btn = e.target.closest("button[data-d]"); if (!btn) return;
-          var d = parseInt(btn.getAttribute("data-d"), 10);
-          var i = chosenDays.indexOf(d);
-          if (i >= 0) chosenDays.splice(i, 1); else chosenDays.push(d);
-          btn.classList.toggle("on");
-        });
-        f.querySelector('[data-x="cancel"]').onclick = closeModal;
-        if (existing) f.querySelector('[data-x="del"]').onclick = function () {
-          state.tasks = state.tasks.filter(function (x) { return x.id !== existing.id; });
-          save(); closeModal(); render(); toast("Task deleted");
-        };
-        f.querySelector('[data-x="save"]').onclick = function () {
-          var text = b.querySelector("#tkText").value.trim();
-          if (!text) { b.querySelector("#tkText").focus(); return; }
-          if (!chosenDays.length) { toast("Pick at least one day"); return; }
-          var days = MON_ORDER.filter(function (d) { return chosenDays.indexOf(d) >= 0; });
-          var minutes = parseInt(b.querySelector("#tkHours").value, 10) * 60 + parseInt(b.querySelector("#tkMins").value, 10);
-          if (existing) {
-            existing.text = text; existing.days = days; existing.cat = curCat; existing.minutes = minutes;
-            delete existing.day;
-          } else {
-            state.tasks.push({ id: uid(), text: text, days: days, cat: curCat, minutes: minutes, done: {}, created: Date.now() });
-          }
-          save(); closeModal(); render();
-          toast(existing ? "Task updated" : "Task added");
-        };
-      }
-    });
+    $("#view-habits").innerHTML = emptyBox("bar-chart", "Week", "This section is being rebuilt \u2014 nothing here yet.");
   }
 
   // -----------------------------------------------------------
@@ -913,15 +456,9 @@
     var list = activeList();
     var shopCount = list ? list.items.filter(function (i) { return !i.done; }).length : 0;
     var due = todaysReminders().filter(function (r) { return !r.done; }).length;
-    var thisWk = weekStartKey();
-    var tasksLeft = 0;
-    state.tasks.forEach(function (t) {
-      if (t.week && t.week !== thisWk) return;
-      taskDays(t).forEach(function (dow) { if (!taskDoneOn(t, dateOfDay(thisWk, dow))) tasksLeft++; });
-    });
     setTabBadge("shopping", shopCount);
     setTabBadge("reminders", due);
-    setTabBadge("habits", tasksLeft);
+    setTabBadge("habits", 0);
   }
 
   function setTabBadge(view, n) {
@@ -1335,16 +872,6 @@
   function reviewModal() {
     var wk = weekStartKey();
 
-    var tasksDone = 0, tasksTotal = 0, minsDone = 0;
-    state.tasks.forEach(function (t) {
-      if (t.week && t.week !== wk) return;
-      taskDays(t).forEach(function (dow) {
-        tasksTotal++;
-        if (taskDoneOn(t, dateOfDay(wk, dow))) { tasksDone++; minsDone += t.minutes || 0; }
-      });
-    });
-    var taskPct = tasksTotal ? Math.round((tasksDone / tasksTotal) * 100) : 0;
-
     var clDone = 0, clTotal = 0;
     state.checklists.forEach(function (c) { c.items.forEach(function (it) { clTotal++; if (it.done) clDone++; }); });
     var clPct = clTotal ? Math.round((clDone / clTotal) * 100) : 0;
@@ -1361,9 +888,7 @@
     var body =
       '<p class="rc-sub" style="margin:0 0 12px">Week of ' + esc(weekLabel) + " – " + esc(sunLabel) + "</p>" +
       '<div class="review-stats">' +
-        '<div class="review-stat"><div class="n accent">' + tasksDone + "/" + tasksTotal + '</div><div class="l">tasks done (' + taskPct + '%)</div></div>' +
-        '<div class="review-stat"><div class="n">' + fmtDur(minsDone) + '</div><div class="l">time completed</div></div>' +
-        '<div class="review-stat"><div class="n">' + remDone + '</div><div class="l">reminders done</div></div>' +
+        '<div class="review-stat"><div class="n accent">' + remDone + '</div><div class="l">reminders done</div></div>' +
         '<div class="review-stat"><div class="n">' + clDone + "/" + clTotal + '</div><div class="l">checklist items (' + clPct + '%)</div></div>' +
       "</div>" +
       '<label class="field"><span>Reflection — how did the week go?</span>' +
@@ -1499,15 +1024,6 @@
       case "edit-shop": shopItemModal(actEl.getAttribute("data-iid")); break;
       case "del-shop": delShop(actEl.getAttribute("data-iid")); break;
       case "clear-done": clearShopDone(); break;
-
-      // Weekly tracker
-      case "week-prev": shiftWeek(-1); break;
-      case "week-next": shiftWeek(1); break;
-      case "add-task": taskModal(null); break;
-      case "scan-schedule": pickScheduleImage(); break;
-      case "edit-task": taskModal(findTask(actEl.getAttribute("data-id"))); break;
-      case "del-task": delTask(actEl.getAttribute("data-id")); break;
-      case "toggle-task": toggleTaskOn(findTask(actEl.getAttribute("data-id")), actEl.getAttribute("data-date")); render(); break;
 
       // Weekly review
       case "open-review": reviewModal(); break;
@@ -1646,11 +1162,6 @@
         '<button data-t="dark" class="' + (theme === "dark" ? "is-active" : "") + '">Dark</button>' +
         '<button data-t="light" class="' + (theme === "light" ? "is-active" : "") + '">Light</button>' +
       "</div></label>" +
-      '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:5px;font-weight:600">Sleep — used to size your day on the Week tab</span>' +
-        '<div class="field-row">' +
-          '<label style="flex:1"><span style="display:block;font-size:0.72rem;color:var(--text-faint);margin-bottom:3px">Wake up</span><input type="time" id="stWake" value="' + esc(state.settings.wakeTime || "08:30") + '"></label>' +
-          '<label style="flex:1"><span style="display:block;font-size:0.72rem;color:var(--text-faint);margin-bottom:3px">Bedtime</span><input type="time" id="stSleep" value="' + esc(state.settings.sleepTime || "01:00") + '"></label>' +
-        "</div></div>" +
       '<div class="field"><span style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:5px;font-weight:600">Reminders</span>' +
         '<div class="row" style="border:none;padding:4px 0"><div class="row-body"><div class="row-text">Notifications</div>' +
         '<div class="row-meta"><span class="pill">' + notif + "</span></div></div>" +
@@ -1670,9 +1181,6 @@
           setTheme(btn.getAttribute("data-t"));
           b.querySelectorAll("#stTheme button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
         });
-        var wakeEl = b.querySelector("#stWake"), sleepEl = b.querySelector("#stSleep");
-        wakeEl.onchange = function () { if (wakeEl.value) { state.settings.wakeTime = wakeEl.value; save(); } };
-        sleepEl.onchange = function () { if (sleepEl.value) { state.settings.sleepTime = sleepEl.value; save(); } };
         var notifBtn = b.querySelector('[data-x="notif"]');
         if (notifBtn) notifBtn.onclick = function () {
           if (Notification.permission === "granted") { fireNotification("Nest test", "Notifications are working!"); }
@@ -1687,7 +1195,7 @@
               state = defaultState(); save(); applyTheme(); closeModal(); setView("habits"); toast("Fresh start");
             });
         };
-        f.querySelector('[data-x="close"]').onclick = function () { closeModal(); render(); };
+        f.querySelector('[data-x="close"]').onclick = closeModal;
       }
     });
   }
@@ -1763,24 +1271,6 @@
   updateNotifButton();
   setView("habits");
   checkDue();
-  handleSharedImage();
-
-  // A screenshot shared to Nest (Web Share Target) is stashed by the service
-  // worker; on launch with ?share=1 we pull it out and run the scan flow.
-  function handleSharedImage() {
-    if (new URLSearchParams(location.search).get("share") !== "1") return;
-    history.replaceState(null, "", location.pathname);   // clean the URL
-    if (!("caches" in window)) return;
-    caches.open("nest-share").then(function (c) {
-      return c.match("shared-image").then(function (res) {
-        if (!res) return;
-        return res.blob().then(function (blob) {
-          c.delete("shared-image");
-          scanSchedule(blob);
-        });
-      });
-    }).catch(function () {});
-  }
 
   // Re-check reminders periodically and when the app regains focus.
   setInterval(checkDue, 30000);

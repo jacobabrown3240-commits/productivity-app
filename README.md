@@ -11,22 +11,8 @@ sending reminder notifications.
 
 ## What's inside
 
-- **Week** — a **weekly task + time tracker** (the home screen). Add tasks and
-  pick **which days they repeat** (one or several) — every task recurs **every
-  week**, ticked off per day. Give each a **category** (Work, Personal or
-  School) and a rough **duration**. Tasks show up as **colored time blocks**
-  (sized by how long they take, ADHD-planner style) grouped under each day —
-  tap a block to complete it. See weekly completion **progress bars** overall
-  and per category, plus a **time-by-day** breakdown: each bar is your whole
-  **waking day**, so the filled part shows the chunk that's taken and the empty
-  part is free time. Set your **wake/bedtime in Settings** (default 8:30am–1am)
-  to size the day; the legend totals Work, Personal, School and **Free** hours
-  for the week. Flip between weeks with the arrows. **Scan schedule** reads a
-  work-schedule screenshot on-device — tap *Scan schedule* and pick the image,
-  or (once Nest is installed) **share** a screenshot straight to Nest — and it
-  fills in your shifts as Work blocks for that week (it even reads the dates to
-  pick the right week). Shifts stay on their week and don't repeat; you confirm
-  what it found before it's added.
+- **Week** — the app's home screen. This section is currently a blank
+  placeholder while it's being redesigned.
 - **Reminders** — set a **notification** for anything you shouldn't forget:
   one-off reminders for a specific day (pick up milk after work, a dentist
   appointment) *and* **weekly** recurring reminders (bin night, gym, call
@@ -42,9 +28,9 @@ sending reminder notifications.
   each week fresh. Add, rename, edit, delete and **drag to reorder** items. Two
   starters are included ("Weekly reset" and "Every morning").
 - **Notes** — a simple notepad for anything else.
-- **Weekly review** — a summary of your week (tasks done and time completed,
-  reminders done, checklist completion) with a saved reflection for each week.
-  Open it from the bottom of the Reminders tab.
+- **Weekly review** — a summary of your week (reminders done, checklist
+  completion) with a saved reflection for each week. Open it from the bottom of
+  the Reminders tab.
 
 Extras: dark / light theme, one-tap **backup export/import** (JSON), tab badges
 for what needs attention, and drag-to-reorder throughout.
